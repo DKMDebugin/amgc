@@ -9,9 +9,12 @@
   </head>
   <body>
 
-    <button type="button" name="button" id='startBtn'>Play</button>
-    <button type="button" name="button" id='stopBtn'>Stop</button>
-    <script src="{{ url_for('static', filename='js/bundle.js') }}"></script>
+    <button id="recordButton">Record</button>
+<!--    <button id="pauseButton" disabled>Pause</button>-->
+    <button id="stopButton" disabled>Stop</button>
+    <div id="formats">Format: start recording to see sample rate</div>
+    <script src="https://cdn.rawgit.com/mattdiamond/Recorderjs/08e7abd9/dist/recorder.js"></script>
+    <script src="{{ url_for('static', filename='js/app_v2.js') }}"></script>
 
   </body>
 </html>

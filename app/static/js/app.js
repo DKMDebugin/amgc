@@ -131,6 +131,9 @@ function stopRecording(recorder) {
 }
 
 function saveBlobAsFile(blob, filename) {
+  blob.text().then(text => {
+
+  })
   fs.writeFile(filename, blob, function (err) {
     if (err) throw err;
     console.log('Saved!');
