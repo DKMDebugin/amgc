@@ -4,4 +4,6 @@
 .DS_store
 __pycache__
 node-project
-simple-recorderjs-demo
+simple-recorderjs-demovenv
+venv
+.ipynb_checkpoints
