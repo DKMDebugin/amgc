@@ -86,6 +86,27 @@ def extra_stats(feature):
         'skewness': skew(feature)
     }
 
+def extract_cqt(file):
+    # get sample rate of audio file and load audio file as time series
+    sample_rate = librosa.core.get_samplerate(file.path)
+    time_series, _ = librosa.core.load(file.path, sample_rate)
+
+    # compute cqt and convert from amplitude to decibels unit
+    cqt = librosa.cqt(time_series, sample_rate)
+    scaled_cqt = librosa.amplitude_to_db(cqt, ref=np.max)
+    
+    return scaled_cqt
+
+def extract_mel_spect(file):
+    # get sample rate of audio file and load audio file as time series
+    sample_rate = librosa.core.get_samplerate(file.path)
+    time_series, _ = librosa.core.load(file.path, sample_rate)
+
+    # compute spectogram and convert spectogram to decibels unit 
+    mel_spect = librosa.feature.melspectrogram(time_series, sample_rate)
+    scaled_mel_spect = librosa.power_to_db(mel_spect, ref=np.max)
+    
+    return scaled_mel_spect
 
 # store for all features to be extracted except log-mel and mel-spectogram.
 dataframe = pd.DataFrame({
