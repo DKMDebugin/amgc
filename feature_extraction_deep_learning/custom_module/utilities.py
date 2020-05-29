@@ -30,19 +30,9 @@ def remote_imports():
 
 def load(filepath):
     """
-    This method was adapted from the FMA: A Dataset For Music Analysis.
+    This method was adapted from the FMA: A Dataset For Music Analysis repository.
     """
     filename = os.path.basename(filepath)
-
-    # if 'features' in filename:
-    #     return pd.read_csv(filepath, index_col=0, header=[0, 1, 2])
-    #
-    # if 'echonest' in filename:
-    #     return pd.read_csv(filepath, index_col=0, header=[0, 1, 2])
-    #
-    # if 'genres' in filename:
-    #     return pd.read_csv(filepath, index_col=None)
-
     if 'tracks' in filename:
         tracks = pd.read_csv(filepath, index_col=0, header=[0, 1])
 
@@ -88,23 +78,23 @@ def extra_stats(feature):
 
 def extract_cqt(file):
     # get sample rate of audio file and load audio file as time series
-    sample_rate = librosa.core.get_samplerate(file.path)
-    time_series, _ = librosa.core.load(file.path, sample_rate)
+    sample_rate = librosa.core.get_samplerate(file.path);
+    time_series, _ = librosa.core.load(file.path, sample_rate);
 
     # compute cqt and convert from amplitude to decibels unit
-    cqt = librosa.cqt(time_series, sample_rate)
-    scaled_cqt = librosa.amplitude_to_db(cqt, ref=np.max)
+    cqt = librosa.cqt(time_series, sample_rate);
+    scaled_cqt = librosa.amplitude_to_db(cqt, ref=np.max);
     
     return scaled_cqt
 
 def extract_mel_spect(file):
     # get sample rate of audio file and load audio file as time series
-    sample_rate = librosa.core.get_samplerate(file.path)
-    time_series, _ = librosa.core.load(file.path, sample_rate)
+    sample_rate = librosa.core.get_samplerate(file.path);
+    time_series, _ = librosa.core.load(file.path, sample_rate);
 
     # compute spectogram and convert spectogram to decibels unit 
-    mel_spect = librosa.feature.melspectrogram(time_series, sample_rate)
-    scaled_mel_spect = librosa.power_to_db(mel_spect, ref=np.max)
+    mel_spect = librosa.feature.melspectrogram(time_series, sample_rate);
+    scaled_mel_spect = librosa.power_to_db(mel_spect, ref=np.max);
     
     return scaled_mel_spect
 
@@ -378,6 +368,11 @@ dataframe = pd.DataFrame({
 
 })
 
+def feedback(file, genre_label):
+    if type(file) == str:   
+        print('appended features extracted from ' + file + ' with genre: ' + genre_label)
+    else:
+        print('appended features extracted from ' + str(file.name) + ' with genre: ' + genre_label)
 
 def extract_audio_features(dataframe, file, genre_label, data_source):
     '''
@@ -760,9 +755,6 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
     # append new row
     dataframe = dataframe.append(new_row, ignore_index=True)
     
-    if type(file) == str:   
-        print('appended features extracted from ' + file + ' with genre: ' + genre_label)
-    else:
-        print('appended features extracted from ' + str(file.name) + ' with genre: ' + genre_label)
+    feedback(file, genre_label)
 
     return dataframe
