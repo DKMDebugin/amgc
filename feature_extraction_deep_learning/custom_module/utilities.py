@@ -1,11 +1,17 @@
 import ast
-from pandas.api.types import CategoricalDtype
+from sklearn.base import BaseEstimator, TransformerMixin;
+from tensorflow.keras import layers
 import librosa
+from tensorflow.keras.models import Sequential;
 import numpy as np
 import os
-import pandas as pd
+import pandas
+from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline;
+from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler;
 import pywt
 from scipy.stats import skew
+import tensorflow as tf;
+from pandas.api.types import CategoricalDtype
 
 # constants
 
@@ -14,7 +20,222 @@ LOCAL_MOUNTED_DATASET_PATH = '/Users/macbookretina/Desktop/mount-s3-bucket'
 SAMPLE_FILE = '/home/macbookretina/s3-bucket/gtzan/wavfiles/blues.00042.wav'
 GENRES = ['hiphop', 'rock', 'pop']
 
-# functions
+# utility classes and functions
+def set_shape_create_cnn_model(name, ncols):
+    '''
+    set_shape_create_cnn_model() returns a create_model function, 
+    taking as parameters the name and column input shape.
+    '''
+    def create_model(n_hidden=1, activation='relu', optimizer='adam',
+                     kernel_initializer='glorot_uniform', n_neurons=30,
+                     filters=16, kernel_size=3, dropout=0.25):
+        '''
+        create_model() returns a FNN model, 
+        taking as parameters things you
+        want to verify using cross-valdiation and model selection
+        '''
+        # initialize a random seed for replication purposes
+        np.random.seed(23456)
+        tf.random.set_seed(123)
+
+        model_layers = [ 
+            layers.Conv1D(
+                filters=filters, kernel_size=kernel_size+4,
+                activation=activation, input_shape=[ncols, 1]),
+        ]
+        
+        index = 1
+        for layer in range(n_hidden):
+            index = index + 1
+            # add a maxpooling layer
+            model_layers.append(layers.MaxPooling1D())
+            #add convolutional layer
+            model_layers.append(
+                layers.Conv1D(
+                    filters=index * filters, kernel_size=kernel_size, 
+                    activation=activation)
+            )
+        
+        model_layers.append(layers.MaxPooling1D())
+        model_layers.append(layers.Flatten())
+        
+        for layer in range(n_hidden):
+            model_layers.append(
+                layers.Dense(n_neurons, activation=activation, 
+                             kernel_initializer=kernel_initializer)
+            )
+            model_layers.append(layers.Dropout(dropout))
+            
+            
+        # add an output layer
+        model_layers.append(layers.Dense(4, activation='softmax'))
+
+        # Initiating an empty NN
+        model = Sequential(layers=model_layers, name=name)
+
+        print(model.summary())
+
+        # Compiling our NN
+        model.compile(loss='categorical_crossentropy',
+                      optimizer=optimizer,
+                      metrics=['accuracy'])
+
+        return model
+    
+    return create_model
+
+def set_shape_create_model(name, ncols):
+    '''
+    set_shape_create_model() returns a create_model function, 
+    taking as parameters the name and column input shape.
+    '''
+    def create_model(n_hidden=1, activation='relu', optimizer='adam',
+                     kernel_initializer='glorot_uniform', n_neurons=30):
+        '''
+        create_model() returns a FNN model, 
+        taking as parameters things you
+        want to verify using cross-valdiation and model selection
+        '''
+        # initialize a random seed for replication purposes
+        np.random.seed(23456)
+        tf.random.set_seed(123)
+
+        model_layers = [ 
+            layers.Flatten(input_shape=[ncols, 1]),
+        ]
+        
+        for layer in range(n_hidden):
+            # add a dense layers
+            model_layers.append(
+                layers.Dense(n_neurons, activation=activation, 
+                             kernel_initializer=kernel_initializer)
+            )
+            
+        # add an output layer
+        model_layers.append(layers.Dense(4, activation='softmax'))
+
+        # Initiating an empty NN
+        model = Sequential(layers=model_layers, name=name)
+
+        print(model.summary())
+
+        # Compiling our NN
+        model.compile(loss='categorical_crossentropy',
+                      optimizer=optimizer,
+                      metrics=['accuracy'])
+
+        return model
+    
+    return create_model
+
+def get_layers(name, model_layers):
+    '''
+    get_layers() returns a create_model function, 
+    taking as parameters the name and layers
+    of the network.
+    '''
+    def create_model(optimizer='adam', dropout=0.2, 
+                     kernel_initializer='glorot_uniform',
+                    n_neurons=30):
+        '''
+        create_model() returns a NN model, 
+        taking as parameters things you
+        want to verify using cross-valdiation and model selection
+        '''
+        # initialize a random seed for replication purposes
+        np.random.seed(23456)
+        tf.random.set_seed(123)
+        
+        # Initiating an empty NN
+        model = Sequential(layers=model_layers, name=name)
+
+        print(model.summary())
+
+        # Compiling our NN
+        model.compile(loss='categorical_crossentropy',
+                      optimizer=optimizer,
+                      metrics=['accuracy'])
+
+        return model
+    
+    return create_model
+
+class AddColumnNames(BaseEstimator, TransformerMixin):
+    def __init__(self, columns):
+        self.columns = columns
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return pandas.DataFrame(data=X, columns=self.columns)
+
+class ColumnSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, columns):
+        self.columns = columns
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        assert isinstance(X, pandas.DataFrame)
+
+        try:
+            return X[self.columns]
+        except KeyError:
+            cols_error = list(set(self.columns) - set(X.columns))
+            raise KeyError("The DataFrame does not include the columns: %s" % cols_error)
+
+class Reshape2D(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        assert isinstance(X, np.ndarray)
+        nrows, ncols = X.shape
+        return X.reshape(nrows, ncols, 1)
+
+def standardization_pipeline(predictors_all, predictors_with_outliers,
+                    predictors_without_outliers):
+    if len(predictors_with_outliers) == 0:
+        return make_pipeline(
+            AddColumnNames(columns=predictors_all),
+            FeatureUnion(transformer_list=[
+                ('predictors_without_outliers', make_pipeline(
+                    ColumnSelector(columns=predictors_without_outliers),
+                    StandardScaler()
+                ))
+            ]),
+            Reshape2D()
+        )
+    
+    return make_pipeline(
+        AddColumnNames(columns=predictors_all),
+        FeatureUnion(transformer_list=[
+            ('predictors_with_outliers', make_pipeline(
+                ColumnSelector(columns=predictors_with_outliers),
+#                 FunctionTransformer(numpy.log),
+                RobustScaler()
+            )),
+            ('predictors_without_outliers', make_pipeline(
+                ColumnSelector(columns=predictors_without_outliers),
+                StandardScaler()
+            )),
+        ]),
+        Reshape2D()
+    )
+
+def normalization_pipeline(predictors_all):
+    return make_pipeline(
+        AddColumnNames(columns=predictors_all),
+        FeatureUnion(transformer_list=[
+            ('predictors_all', make_pipeline(
+                ColumnSelector(columns=predictors_all),
+                MinMaxScaler()
+            ))
+        ]),
+        Reshape2D()
+    )
 
 def remote_imports():
     import ast
@@ -23,7 +244,7 @@ def remote_imports():
     import librosa
     import numpy as np
     import os
-    import pandas as pd
+    import pandas as pandas
     import pywt
     from scipy.stats import skew
 
@@ -34,7 +255,7 @@ def load(filepath):
     """
     filename = os.path.basename(filepath)
     if 'tracks' in filename:
-        tracks = pd.read_csv(filepath, index_col=0, header=[0, 1])
+        tracks = pandas.read_csv(filepath, index_col=0, header=[0, 1])
 
         COLUMNS = [('track', 'tags'), ('album', 'tags'), ('artist', 'tags'),
                    ('track', 'genres'), ('track', 'genres_all')]
@@ -46,7 +267,7 @@ def load(filepath):
                    ('artist', 'date_created'), ('artist', 'active_year_begin'),
                    ('artist', 'active_year_end')]
         for column in COLUMNS:
-            tracks[column] = pd.to_datetime(tracks[column])
+            tracks[column] = pandas.to_datetime(tracks[column])
 
         SUBSETS = ('small', 'medium', 'large')
         tracks['set', 'subset'] = tracks['set', 'subset'].astype(
@@ -99,7 +320,7 @@ def extract_mel_spect(file):
     return scaled_mel_spect
 
 # store for all features to be extracted except log-mel and mel-spectogram.
-dataframe = pd.DataFrame({
+dataframe = pandas.DataFrame({
     'genre_label': [],
     'data_source': [],
 
@@ -383,7 +604,7 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
     Timbral, rhythmic, and wavelet features are extracted excluding log-mel and mel-spectogram.
 
     Parameters:
-    dataframe (pd.Dataframe): Dataframe to update with new row.
+    dataframe (pandas.Dataframe): Dataframe to upandasate with new row.
     file (File or str): an audio file or file path.
     genre_label (str): audio genre label
     data_source (str): fma or gtzan
