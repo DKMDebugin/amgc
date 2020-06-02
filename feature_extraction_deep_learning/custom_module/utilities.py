@@ -1,5 +1,6 @@
 import ast
 from sklearn.base import BaseEstimator, TransformerMixin;
+from sklearn.decomposition import PCA;
 from tensorflow.keras import layers
 import librosa
 from tensorflow.keras.models import Sequential;
@@ -14,7 +15,6 @@ import tensorflow as tf;
 from pandas.api.types import CategoricalDtype
 
 # constants
-
 MOUNTED_DATASET_PATH = '/home/macbookretina/s3-bucket'
 LOCAL_MOUNTED_DATASET_PATH = '/Users/macbookretina/Desktop/mount-s3-bucket'
 SAMPLE_FILE = '/home/macbookretina/s3-bucket/gtzan/wavfiles/blues.00042.wav'
@@ -40,7 +40,7 @@ def set_shape_create_cnn_model(name, ncols):
 
         model_layers = [ 
             layers.Conv1D(
-                filters=filters, kernel_size=kernel_size+4,
+                filters=filters, kernel_size=kernel_size,
                 activation=activation, input_shape=[ncols, 1]),
         ]
         
@@ -128,39 +128,10 @@ def set_shape_create_model(name, ncols):
     
     return create_model
 
-def get_layers(name, model_layers):
-    '''
-    get_layers() returns a create_model function, 
-    taking as parameters the name and layers
-    of the network.
-    '''
-    def create_model(optimizer='adam', dropout=0.2, 
-                     kernel_initializer='glorot_uniform',
-                    n_neurons=30):
-        '''
-        create_model() returns a NN model, 
-        taking as parameters things you
-        want to verify using cross-valdiation and model selection
-        '''
-        # initialize a random seed for replication purposes
-        np.random.seed(23456)
-        tf.random.set_seed(123)
-        
-        # Initiating an empty NN
-        model = Sequential(layers=model_layers, name=name)
-
-        print(model.summary())
-
-        # Compiling our NN
-        model.compile(loss='categorical_crossentropy',
-                      optimizer=optimizer,
-                      metrics=['accuracy'])
-
-        return model
-    
-    return create_model
-
 class AddColumnNames(BaseEstimator, TransformerMixin):
+    '''
+    AddColumnNames is used to add columns to a pipeline.
+    '''
     def __init__(self, columns):
         self.columns = columns
 
@@ -171,6 +142,9 @@ class AddColumnNames(BaseEstimator, TransformerMixin):
         return pandas.DataFrame(data=X, columns=self.columns)
 
 class ColumnSelector(BaseEstimator, TransformerMixin):
+    '''
+    ColumnSelector is used to select columns in a pipeline
+    '''
     def __init__(self, columns):
         self.columns = columns
 
@@ -186,7 +160,10 @@ class ColumnSelector(BaseEstimator, TransformerMixin):
             cols_error = list(set(self.columns) - set(X.columns))
             raise KeyError("The DataFrame does not include the columns: %s" % cols_error)
 
-class Reshape2D(BaseEstimator, TransformerMixin):
+class Reshape1DTo2D(BaseEstimator, TransformerMixin):
+    '''
+    Reshape2D reshapes 1D input to 2D.
+    '''
     def fit(self, X, y=None):
         return self
     
@@ -195,8 +172,16 @@ class Reshape2D(BaseEstimator, TransformerMixin):
         nrows, ncols = X.shape
         return X.reshape(nrows, ncols, 1)
 
+# def standardization_pipeline(predictors_all, predictors_with_outliers,
+#                     predictors_without_outliers, n_components):
 def standardization_pipeline(predictors_all, predictors_with_outliers,
                     predictors_without_outliers):
+    '''
+    standardization_pipeline() returns a Pipeline object, 
+    taking as parameters the all labels in the dataset,
+    lables of predcitorswith outliers, and ones without
+    outliers.
+    '''
     if len(predictors_with_outliers) == 0:
         return make_pipeline(
             AddColumnNames(columns=predictors_all),
@@ -206,7 +191,8 @@ def standardization_pipeline(predictors_all, predictors_with_outliers,
                     StandardScaler()
                 ))
             ]),
-            Reshape2D()
+#             PCA(n_components=n_components),
+            Reshape1DTo2D()
         )
     
     return make_pipeline(
@@ -222,10 +208,16 @@ def standardization_pipeline(predictors_all, predictors_with_outliers,
                 StandardScaler()
             )),
         ]),
-        Reshape2D()
+#         PCA(n_components=n_components),
+        Reshape1DTo2D()
     )
 
+# def normalization_pipeline(predictors_all, n_components):
 def normalization_pipeline(predictors_all):
+    '''
+    normalization_pipeline() returns a Pipeline object, 
+    taking as parameters the all labels in the dataset.
+    '''
     return make_pipeline(
         AddColumnNames(columns=predictors_all),
         FeatureUnion(transformer_list=[
@@ -234,7 +226,8 @@ def normalization_pipeline(predictors_all):
                 MinMaxScaler()
             ))
         ]),
-        Reshape2D()
+#         PCA(n_components=n_components),
+        Reshape1DTo2D()
     )
 
 def remote_imports():
@@ -251,7 +244,8 @@ def remote_imports():
 
 def load(filepath):
     """
-    This method was adapted from the FMA: A Dataset For Music Analysis repository.
+    load() was adapted from the FMA: A Dataset For Music Analysis repository.
+    It is used to load the tracks.csv file from the FMA dataset.
     """
     filename = os.path.basename(filepath)
     if 'tracks' in filename:
@@ -283,6 +277,10 @@ def load(filepath):
 
 
 def stats(feature):
+    """
+    stats() returns a dict of stats: mean, median, std & variance,
+    for a single feature.
+    """
     return {
         'mean': np.mean(feature),
         'median': np.median(feature),
@@ -292,12 +290,20 @@ def stats(feature):
 
 
 def extra_stats(feature):
+    """
+    extra_stats() returns a dict of stats: sub-band energy & skewness,
+    for a single feature.
+    """
     return {
         'sb_energy': np.mean(np.abs(feature)),
         'skewness': skew(feature)
     }
 
 def extract_cqt(file):
+    '''
+    extract_cqt() returns the log-mel value for audio signal, 
+    taking as parameters file object of an audio signal
+    '''
     # get sample rate of audio file and load audio file as time series
     sample_rate = librosa.core.get_samplerate(file.path);
     time_series, _ = librosa.core.load(file.path, sample_rate);
@@ -309,6 +315,10 @@ def extract_cqt(file):
     return scaled_cqt
 
 def extract_mel_spect(file):
+    '''
+    extract_mel_spect() returns the mel spectogram value for an audio signal, 
+    taking as parameters file object of an audio signal
+    '''
     # get sample rate of audio file and load audio file as time series
     sample_rate = librosa.core.get_samplerate(file.path);
     time_series, _ = librosa.core.load(file.path, sample_rate);
@@ -590,6 +600,11 @@ dataframe = pandas.DataFrame({
 })
 
 def feedback(file, genre_label):
+    '''
+    feedback() is a extract function from extract_audio_features(), taking
+    as parameter a file object and genre label. Prints the status of the 
+    feature extraction process.
+    '''
     if type(file) == str:   
         print('appended features extracted from ' + file + ' with genre: ' + genre_label)
     else:
