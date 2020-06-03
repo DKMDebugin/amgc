@@ -68,7 +68,7 @@ def set_shape_create_cnn_model(name, ncols):
             
             
         # add an output layer
-        model_layers.append(layers.Dense(4, activation='softmax'))
+        model_layers.append(layers.Dense(3, activation='softmax'))
 
         # Initiating an empty NN
         model = Sequential(layers=model_layers, name=name)
@@ -112,7 +112,7 @@ def set_shape_create_model(name, ncols):
             )
             
         # add an output layer
-        model_layers.append(layers.Dense(4, activation='softmax'))
+        model_layers.append(layers.Dense(3, activation='softmax'))
 
         # Initiating an empty NN
         model = Sequential(layers=model_layers, name=name)
