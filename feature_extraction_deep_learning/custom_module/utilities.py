@@ -1,18 +1,19 @@
-import ast
+import ast;
 from sklearn.base import BaseEstimator, TransformerMixin;
 from sklearn.decomposition import PCA;
-from tensorflow.keras import layers
-import librosa
-from tensorflow.keras.models import Sequential;
-import numpy as np
-import os
-import pandas
+import joblib;
+from tensorflow.keras import layers, models;
+import librosa;
+from tensorflow.keras.models import Sequential, load_model;
+import numpy as np;
+import os;
+import pandas;
 from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline;
 from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler;
-import pywt
-from scipy.stats import skew
+import pywt;
+from scipy.stats import skew;
 import tensorflow as tf;
-from pandas.api.types import CategoricalDtype
+from pandas.api.types import CategoricalDtype;
 
 # constants
 MOUNTED_DATASET_PATH = '/home/macbookretina/s3-bucket'
@@ -20,97 +21,95 @@ LOCAL_MOUNTED_DATASET_PATH = '/Users/macbookretina/Desktop/mount-s3-bucket'
 SAMPLE_FILE = '/home/macbookretina/s3-bucket/gtzan/wavfiles/blues.00042.wav'
 GENRES = ['hiphop', 'rock', 'pop']
 
+
 # utility classes and functions
-def set_shape_create_cnn_model(name, ncols):
-    '''
-    set_shape_create_cnn_model() returns a create_model function, 
-    taking as parameters the name and column input shape.
-    '''
-    def create_model(n_hidden=1, activation='relu', optimizer='adam',
-                     kernel_initializer='glorot_uniform', n_neurons=30,
-                     filters=16, kernel_size=3, dropout=0.25):
-        '''
-        create_model() returns a FNN model, 
-        taking as parameters things you
-        want to verify using cross-valdiation and model selection
-        '''
-        # initialize a random seed for replication purposes
-        np.random.seed(23456)
-        tf.random.set_seed(123)
+def set_shape_create_cnn_model(n_hidden=1, activation='relu', optimizer='adam',
+                               kernel_initializer='glorot_uniform', n_neurons=30,
+                               filters=16, kernel_size=3, dropout=0.25):
+    """
+    set_shape_create_cnn_model() returns a CNN model,
+    taking as parameters things you want to verify
+    using cross validation and model selection
+    """
+    name = 'cnn'
+    ncols = 217
 
-        model_layers = [ 
-            layers.Conv1D(
-                filters=filters, kernel_size=kernel_size,
-                activation=activation, input_shape=[ncols, 1]),
-        ]
-        
-        index = 1
-        for layer in range(n_hidden):
-            index = index + 1
-            # add a maxpooling layer
-            model_layers.append(layers.MaxPooling1D())
-            #add convolutional layer
-            model_layers.append(
-                layers.Conv1D(
-                    filters=index * filters, kernel_size=kernel_size, 
-                    activation=activation)
-            )
-        
+    # initialize a random seed for replication purposes
+    np.random.seed(23456)
+    tf.random.set_seed(123)
+
+    model_layers = [
+        layers.Conv1D(
+            filters=filters, kernel_size=kernel_size,
+            activation=activation, input_shape=[ncols, 1]),
+    ]
+
+    index = 1
+    for layer in range(n_hidden):
+        index = index + 1
+        # add a maxpooling layer
         model_layers.append(layers.MaxPooling1D())
-        model_layers.append(layers.Flatten())
-        
-        for layer in range(n_hidden):
-            model_layers.append(
-                layers.Dense(n_neurons, activation=activation, 
-                             kernel_initializer=kernel_initializer)
-            )
-            model_layers.append(layers.Dropout(dropout))
-            
-            
-        # add an output layer
-        model_layers.append(layers.Dense(3, activation='softmax'))
+        # add convolutional layer
+        model_layers.append(
+            layers.Conv1D(
+                filters=index * filters, kernel_size=kernel_size,
+                activation=activation)
+        )
 
-        # Initiating an empty NN
-        model = Sequential(layers=model_layers, name=name)
+    model_layers.append(layers.MaxPooling1D())
+    model_layers.append(layers.Flatten())
 
-        print(model.summary())
+    for layer in range(n_hidden):
+        model_layers.append(
+            layers.Dense(n_neurons, activation=activation,
+                         kernel_initializer=kernel_initializer)
+        )
+        model_layers.append(layers.Dropout(dropout))
 
-        # Compiling our NN
-        model.compile(loss='categorical_crossentropy',
-                      optimizer=optimizer,
-                      metrics=['accuracy'])
+    # add an output layer
+    model_layers.append(layers.Dense(3, activation='softmax'))
 
-        return model
-    
-    return create_model
+    # Initiating an empty NN
+    model = Sequential(layers=model_layers, name=name)
+
+    print(model.summary())
+
+    # Compiling our NN
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=optimizer,
+                  metrics=['accuracy'])
+
+    return model
+
 
 def set_shape_create_model(name, ncols):
-    '''
+    """
     set_shape_create_model() returns a create_model function, 
     taking as parameters the name and column input shape.
-    '''
+    """
+
     def create_model(n_hidden=1, activation='relu', optimizer='adam',
                      kernel_initializer='glorot_uniform', n_neurons=30):
-        '''
+        """
         create_model() returns a FNN model, 
         taking as parameters things you
         want to verify using cross-valdiation and model selection
-        '''
+        """
         # initialize a random seed for replication purposes
         np.random.seed(23456)
         tf.random.set_seed(123)
 
-        model_layers = [ 
+        model_layers = [
             layers.Flatten(input_shape=[ncols, 1]),
         ]
-        
+
         for layer in range(n_hidden):
             # add a dense layers
             model_layers.append(
-                layers.Dense(n_neurons, activation=activation, 
+                layers.Dense(n_neurons, activation=activation,
                              kernel_initializer=kernel_initializer)
             )
-            
+
         # add an output layer
         model_layers.append(layers.Dense(3, activation='softmax'))
 
@@ -125,13 +124,15 @@ def set_shape_create_model(name, ncols):
                       metrics=['accuracy'])
 
         return model
-    
+
     return create_model
 
+
 class AddColumnNames(BaseEstimator, TransformerMixin):
-    '''
+    """
     AddColumnNames is used to add columns to a pipeline.
-    '''
+    """
+
     def __init__(self, columns):
         self.columns = columns
 
@@ -141,10 +142,12 @@ class AddColumnNames(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return pandas.DataFrame(data=X, columns=self.columns)
 
+
 class ColumnSelector(BaseEstimator, TransformerMixin):
-    '''
+    """
     ColumnSelector is used to select columns in a pipeline
-    '''
+    """
+
     def __init__(self, columns):
         self.columns = columns
 
@@ -160,28 +163,31 @@ class ColumnSelector(BaseEstimator, TransformerMixin):
             cols_error = list(set(self.columns) - set(X.columns))
             raise KeyError("The DataFrame does not include the columns: %s" % cols_error)
 
+
 class Reshape1DTo2D(BaseEstimator, TransformerMixin):
-    '''
+    """
     Reshape2D reshapes 1D input to 2D.
-    '''
+    """
+
     def fit(self, X, y=None):
         return self
-    
+
     def transform(self, X):
         assert isinstance(X, np.ndarray)
         nrows, ncols = X.shape
         return X.reshape(nrows, ncols, 1)
 
+
 # def standardization_pipeline(predictors_all, predictors_with_outliers,
 #                     predictors_without_outliers, n_components):
 def standardization_pipeline(predictors_all, predictors_with_outliers,
-                    predictors_without_outliers):
-    '''
+                             predictors_without_outliers):
+    """
     standardization_pipeline() returns a Pipeline object, 
     taking as parameters the all labels in the dataset,
-    lables of predcitorswith outliers, and ones without
+    labels of predcitors with outliers, and ones without
     outliers.
-    '''
+    """
     if len(predictors_with_outliers) == 0:
         return make_pipeline(
             AddColumnNames(columns=predictors_all),
@@ -191,16 +197,16 @@ def standardization_pipeline(predictors_all, predictors_with_outliers,
                     StandardScaler()
                 ))
             ]),
-#             PCA(n_components=n_components),
+            #             PCA(n_components=n_components),
             Reshape1DTo2D()
         )
-    
+
     return make_pipeline(
         AddColumnNames(columns=predictors_all),
         FeatureUnion(transformer_list=[
             ('predictors_with_outliers', make_pipeline(
                 ColumnSelector(columns=predictors_with_outliers),
-#                 FunctionTransformer(numpy.log),
+                #                 FunctionTransformer(numpy.log),
                 RobustScaler()
             )),
             ('predictors_without_outliers', make_pipeline(
@@ -208,16 +214,17 @@ def standardization_pipeline(predictors_all, predictors_with_outliers,
                 StandardScaler()
             )),
         ]),
-#         PCA(n_components=n_components),
+        #         PCA(n_components=n_components),
         Reshape1DTo2D()
     )
 
+
 # def normalization_pipeline(predictors_all, n_components):
 def normalization_pipeline(predictors_all):
-    '''
+    """
     normalization_pipeline() returns a Pipeline object, 
     taking as parameters the all labels in the dataset.
-    '''
+    """
     return make_pipeline(
         AddColumnNames(columns=predictors_all),
         FeatureUnion(transformer_list=[
@@ -226,9 +233,10 @@ def normalization_pipeline(predictors_all):
                 MinMaxScaler()
             ))
         ]),
-#         PCA(n_components=n_components),
+        #         PCA(n_components=n_components),
         Reshape1DTo2D()
     )
+
 
 def remote_imports():
     import ast
@@ -299,11 +307,12 @@ def extra_stats(feature):
         'skewness': skew(feature)
     }
 
+
 def extract_cqt(file):
-    '''
+    """
     extract_cqt() returns the log-mel value for audio signal, 
     taking as parameters file object of an audio signal
-    '''
+    """
     # get sample rate of audio file and load audio file as time series
     sample_rate = librosa.core.get_samplerate(file.path);
     time_series, _ = librosa.core.load(file.path, sample_rate);
@@ -311,14 +320,15 @@ def extract_cqt(file):
     # compute cqt and convert from amplitude to decibels unit
     cqt = librosa.cqt(time_series, sample_rate);
     scaled_cqt = librosa.amplitude_to_db(cqt, ref=np.max);
-    
+
     return scaled_cqt
 
+
 def extract_mel_spect(file):
-    '''
+    """
     extract_mel_spect() returns the mel spectogram value for an audio signal, 
     taking as parameters file object of an audio signal
-    '''
+    """
     # get sample rate of audio file and load audio file as time series
     sample_rate = librosa.core.get_samplerate(file.path);
     time_series, _ = librosa.core.load(file.path, sample_rate);
@@ -326,8 +336,9 @@ def extract_mel_spect(file):
     # compute spectogram and convert spectogram to decibels unit 
     mel_spect = librosa.feature.melspectrogram(time_series, sample_rate);
     scaled_mel_spect = librosa.power_to_db(mel_spect, ref=np.max);
-    
+
     return scaled_mel_spect
+
 
 # store for all features to be extracted except log-mel and mel-spectogram.
 dataframe = pandas.DataFrame({
@@ -599,34 +610,36 @@ dataframe = pandas.DataFrame({
 
 })
 
+
 def feedback(file, genre_label):
-    '''
+    """
     feedback() is a extract function from extract_audio_features(), taking
     as parameter a file object and genre label. Prints the status of the 
     feature extraction process.
-    '''
-    if type(file) == str:   
+    """
+    if type(file) == str:
         print('appended features extracted from ' + file + ' with genre: ' + genre_label)
     else:
         print('appended features extracted from ' + str(file.name) + ' with genre: ' + genre_label)
 
+
 def extract_audio_features(dataframe, file, genre_label, data_source):
-    '''
+    """
     This function takes a datafame, an audio file (check librosa for acceptable formats),
-    genre label, and datasource. It extract features from the audio and returns the dataframe with
-    the new row appended.
+    genre label, and data source. It extract features from the audio and returns the
+    dataframe with the new row appended.
 
     Timbral, rhythmic, and wavelet features are extracted excluding log-mel and mel-spectogram.
 
     Parameters:
-    dataframe (pandas.Dataframe): Dataframe to upandasate with new row.
+    dataframe (pandas.Dataframe): Dataframe to be updated with new row.
     file (File or str): an audio file or file path.
     genre_label (str): audio genre label
     data_source (str): fma or gtzan
-    '''
-    
+    """
+
     # get sample rate of audio file & load audio file as time series
-    if type(file) == str:   
+    if type(file) == str:
         sample_rate = librosa.core.get_samplerate(file)
         time_series, _ = librosa.core.load(file, sample_rate)
     else:
@@ -990,7 +1003,35 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
 
     # append new row
     dataframe = dataframe.append(new_row, ignore_index=True)
-    
+
     feedback(file, genre_label)
 
     return dataframe
+
+
+def extract_features_make_prediction(filepath):
+    """
+    This function takes path to a .wav audio file as input.
+    It extract features from the audio file, scales these
+    features & make prediction with them.
+
+    Parameter:
+    filepath (str): path to a .wav audio file
+    """
+
+    features = extract_audio_features(dataframe, filepath, '', '').values[:, 2:]
+    pipeline_estimator_path = LOCAL_MOUNTED_DATASET_PATH + '/model/pipeline_estimator.pkl'
+    pipeline_estimator = joblib.load(pipeline_estimator_path)
+    model_path = LOCAL_MOUNTED_DATASET_PATH + '/model/cnn_model.h5'
+    model = load_model(model_path)
+    # model = models.load_model(LOCAL_MOUNTED_DATASET_PATH + '/model/cnn_model.h5')
+    features = pipeline_estimator.transform(features)
+    prediction = model.predict_proba(features)
+    # print(prediction)
+    # print(model.predict_proba(features, verbose=1))
+    # print(model.predict_classes(features))
+    map_prediction_to_genre = {}
+    for i in range(3):
+        map_prediction_to_genre[GENRES[i]] = prediction[0][i].item()
+
+    return map_prediction_to_genre
