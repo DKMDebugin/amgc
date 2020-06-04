@@ -1025,7 +1025,9 @@ def extract_features_make_prediction(filepath):
     model_path = LOCAL_MOUNTED_DATASET_PATH + '/model/cnn_model.h5'
     model = load_model(model_path)
     # model = models.load_model(LOCAL_MOUNTED_DATASET_PATH + '/model/cnn_model.h5')
+    # print(features)
     features = pipeline_estimator.transform(features)
+    # print(features)
     prediction = model.predict_proba(features)
     # print(prediction)
     # print(model.predict_proba(features, verbose=1))

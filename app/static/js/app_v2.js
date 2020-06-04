@@ -96,8 +96,10 @@ function sendAudioData(blob) {
     fetch('/audio', {
         method: 'POST',
         body: formData
-    }).then(res => {
-        console.log(res.status)
+    }).then(res => res.json())
+    .then(res => {
+        console.log(res)
+        // console.log(res.data)
     }).catch(err => {
         console.log(err)
     })
