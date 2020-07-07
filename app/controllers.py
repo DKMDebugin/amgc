@@ -1,17 +1,15 @@
-import json
 import os
+import sys
 
 from flask import Flask, jsonify, render_template, request
 from werkzeug.utils import secure_filename
 
-import sys
+WORKING_DIR = os.path.dirname(os.path.realpath(__file__))
+BASE_DIR = os.path.dirname(WORKING_DIR)
+sys.path.insert(1, BASE_DIR + '/feature_extraction_deep_learning/')
 
-# REMOTE_MODULE_PATH = '/home/macbookretina/automatic-music-genre-classification/feature_extraction_deep_learning'
-LOCAL_MODULE_PATH = '/Users/macbookretina/Desktop/automatic-music-genre-classification/feature_extraction_deep_learning'
-sys.path.insert(1, LOCAL_MODULE_PATH)
 from custom_module.utilities import extract_features_make_prediction
 
-WORKING_DIR = os.path.dirname(os.path.realpath(__file__))
 UPLOAD_FOLDER = f'{WORKING_DIR}/file'
 ALLOWED_EXTENSIONS = {'wav'}
 

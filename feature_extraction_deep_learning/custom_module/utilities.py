@@ -1,24 +1,25 @@
-import ast;
-from sklearn.base import BaseEstimator, TransformerMixin;
-from sklearn.decomposition import PCA;
-import joblib;
-from tensorflow.keras import layers, models;
-import librosa;
-from tensorflow.keras.models import Sequential, load_model;
-import numpy as np;
-import os;
-import pandas;
-from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline;
-from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler;
-import pywt;
-from scipy.stats import skew;
-import tensorflow as tf;
-from pandas.api.types import CategoricalDtype;
+import os
+
+import ast
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.decomposition import PCA
+import joblib
+from tensorflow.keras import layers, models
+import librosa
+from tensorflow.keras.models import Sequential, load_model
+import numpy as np
+import pandas
+from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline
+from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler
+import pywt
+from scipy.stats import skew
+import tensorflow as tf
+from pandas.api.types import CategoricalDtype
 
 # constants
-MOUNTED_DATASET_PATH = '/home/macbookretina/s3-bucket'
-LOCAL_MOUNTED_DATASET_PATH = '/Users/macbookretina/Desktop/mount-s3-bucket'
-SAMPLE_FILE = '/home/macbookretina/s3-bucket/gtzan/wavfiles/blues.00042.wav'
+SYS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+MOUNTED_DATASET_PATH = SYS_DIR_PATH + '/s3-bucket'
+SAMPLE_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/blues.00042.wav'
 GENRES = ['hiphop', 'rock', 'pop']
 
 
@@ -1020,11 +1021,11 @@ def extract_features_make_prediction(filepath):
     """
 
     features = extract_audio_features(dataframe, filepath, '', '').values[:, 2:]
-    pipeline_estimator_path = LOCAL_MOUNTED_DATASET_PATH + '/model/pipeline_estimator.pkl'
+    pipeline_estimator_path = MOUNTED_DATASET_PATH + '/model/pipeline_estimator.pkl'
     pipeline_estimator = joblib.load(pipeline_estimator_path)
-    model_path = LOCAL_MOUNTED_DATASET_PATH + '/model/cnn_model.h5'
+    model_path = MOUNTED_DATASET_PATH + '/model/cnn_model.h5'
     model = load_model(model_path)
-    # model = models.load_model(LOCAL_MOUNTED_DATASET_PATH + '/model/cnn_model.h5')
+    # model = models.load_model(MOUNTED_DATASET_PATH + '/model/cnn_model.h5')
     # print(features)
     features = pipeline_estimator.transform(features)
     # print(features)
