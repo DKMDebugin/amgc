@@ -2,6 +2,8 @@ import os
 
 import ast
 from sklearn.base import BaseEstimator, TransformerMixin
+from collections import Counter
+from scipy.stats import entropy, skew
 from sklearn.decomposition import PCA
 import joblib
 from tensorflow.keras import layers, models
@@ -12,7 +14,6 @@ import pandas
 from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline
 from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler
 import pywt
-from scipy.stats import skew
 import tensorflow as tf
 from pandas.api.types import CategoricalDtype
 
@@ -298,14 +299,36 @@ def stats(feature):
     }
 
 
+def calc_entropy(feature):
+    """
+    calc_entropy() returns the entropy for a feature list.
+    It was adapted from Ahmet Taspinar's blog titled:
+    'A guide for using the Wavelet Transform in Machine Learning'.
+    """
+    counter_values = Counter(feature).most_common()
+    probabilities = [elem[1] / len(feature) for elem in counter_values]
+    entropy_val = entropy(probabilities)
+    return entropy_val
+
+
 def extra_stats(feature):
     """
-    extra_stats() returns a dict of stats: sub-band energy & skewness,
-    for a single feature.
+    extra_stats() returns a dict of stats which include;
+    sub-band energy, skewness, (5th, 25th, 75th & 95th) percentile,
+    root mean square, zero crossing rate, mean crossing rate,
+    and entropy, for a single feature list.
     """
     return {
         'sb_energy': np.mean(np.abs(feature)),
-        'skewness': skew(feature)
+        'skewness': skew(feature),
+        '5th_percentile': np.nanpercentile(feature, 5),
+        '25th_percentile': np.nanpercentile(feature, 25),
+        '75th_percentile': np.nanpercentile(feature, 75),
+        '95th_percentile': np.nanpercentile(feature, 95),
+        'rms': np.nanmean(np.sqrt(feature ** 2)),
+        'zcr': len(np.nonzero(np.diff(np.array(feature) > 0))[0]),
+        'mcr': len(np.nonzero(np.diff(np.array(feature) > np.nanmean(feature)))[0]),
+        'entropy': calc_entropy(feature),
     }
 
 
