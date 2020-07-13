@@ -13,18 +13,54 @@ import numpy as np
 import pandas
 from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline
 from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler
+import matplotlib.pyplot as pyplot
 import pywt
 import tensorflow as tf
 from pandas.api.types import CategoricalDtype
 
+
 # constants
 SYS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 MOUNTED_DATASET_PATH = SYS_DIR_PATH + '/s3-bucket'
-SAMPLE_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/blues.00042.wav'
+SAMPLE_HIPHOP_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/hiphop.00000.wav'
+SAMPLE_POP_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/pop.00000.wav'
+SAMPLE_ROCK_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/rock.00000.wav'
 GENRES = ['hiphop', 'rock', 'pop']
 
 
 # utility classes and functions
+def visualize_wavelet(signal, waveletname, level_of_dec):
+    """
+    visualize_wavelet() create original visualization for a signal and 
+    create visulization of the signal for a specified wavelet type for 
+    the range of decompsition level specified taking as parameter the
+    signal, wavelet name and max level of decomposition. 
+    
+    It was adapted from Ahmet Taspinar's blog titled:
+    'A guide for using the Wavelet Transform in Machine Learning'.
+    """
+    # visualize orignal signal
+    fig, ax = pyplot.subplots(figsize=(10,5))
+    ax.set_title("Music Signal: ")
+    ax.plot(signal)
+
+    # visualize specified wavelet for 1 - specified levels of decomposition
+    cA = signal
+    fig, axarr = pyplot.subplots(nrows=level_of_dec, ncols=2, figsize=(10,level_of_dec*1.5))
+    for level in range(level_of_dec):
+        (cA, cD) = pywt.dwt(cA, waveletname)
+        axarr[level, 0].plot(cA, 'r')
+        axarr[level, 1].plot(cD, 'g')
+        axarr[level, 0].set_ylabel("Level {}".format(level + 1), fontsize=14, rotation=90)
+        axarr[level, 0].set_yticklabels([])
+        if level == 0:
+            axarr[level, 0].set_title("Approximation coefficients", fontsize=14)
+            axarr[level, 1].set_title("Detail coefficients", fontsize=14)
+        axarr[level, 1].set_yticklabels([])
+    pyplot.tight_layout()
+    pyplot.show()
+
+    
 def set_shape_create_cnn_model(n_hidden=1, activation='relu', optimizer='adam',
                                kernel_initializer='glorot_uniform', n_neurons=30,
                                filters=16, kernel_size=3, dropout=0.25):
