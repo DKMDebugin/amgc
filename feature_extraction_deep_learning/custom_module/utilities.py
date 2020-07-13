@@ -6,10 +6,10 @@ from collections import Counter
 from scipy.stats import entropy, skew
 from sklearn.decomposition import PCA
 import joblib
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models, optimizers
 import librosa
 from tensorflow.keras.models import Sequential, load_model
-import numpy as np
+import numpy as numpy
 import pandas
 from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline
 from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler
@@ -17,7 +17,6 @@ import matplotlib.pyplot as pyplot
 import pywt
 import tensorflow as tf
 from pandas.api.types import CategoricalDtype
-
 
 # constants
 SYS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
@@ -40,13 +39,13 @@ def visualize_wavelet(signal, waveletname, level_of_dec):
     'A guide for using the Wavelet Transform in Machine Learning'.
     """
     # visualize orignal signal
-    fig, ax = pyplot.subplots(figsize=(10,5))
+    fig, ax = pyplot.subplots(figsize=(10, 5))
     ax.set_title("Music Signal: ")
     ax.plot(signal)
 
     # visualize specified wavelet for 1 - specified levels of decomposition
     cA = signal
-    fig, axarr = pyplot.subplots(nrows=level_of_dec, ncols=2, figsize=(10,level_of_dec*1.5))
+    fig, axarr = pyplot.subplots(nrows=level_of_dec, ncols=2, figsize=(10, level_of_dec * 1.5))
     for level in range(level_of_dec):
         (cA, cD) = pywt.dwt(cA, waveletname)
         axarr[level, 0].plot(cA, 'r')
@@ -60,7 +59,7 @@ def visualize_wavelet(signal, waveletname, level_of_dec):
     pyplot.tight_layout()
     pyplot.show()
 
-    
+
 def set_shape_create_cnn_model(n_hidden=1, activation='relu', optimizer='adam',
                                kernel_initializer='glorot_uniform', n_neurons=30,
                                filters=16, kernel_size=3, dropout=0.25):
@@ -73,13 +72,13 @@ def set_shape_create_cnn_model(n_hidden=1, activation='relu', optimizer='adam',
     ncols = 217
 
     # initialize a random seed for replication purposes
-    np.random.seed(23456)
+    numpy.random.seed(23456)
     tf.random.set_seed(123)
 
     model_layers = [
         layers.Conv1D(
             filters=filters, kernel_size=kernel_size,
-            activation=activation, input_shape=[ncols, 1]),
+            activation=activation, inumpyut_shape=[ncols, 1]),
     ]
 
     index = 1
@@ -120,25 +119,39 @@ def set_shape_create_cnn_model(n_hidden=1, activation='relu', optimizer='adam',
     return model
 
 
+def get_learning_rate(learning_rate, optimizer):
+    """
+    get_learning_rate() returns a optimizer instance taking as parameter
+    learning_rate (int) and optimizer (str)
+    """
+    optimizer_instances = {
+        'rmsprop': optimizers.RMSprop(lr=learning_rate),
+        'adam': optimizers.Adam(lr=learning_rate),
+        'adagrad': optimizers.Adagrad(lr=learning_rate)
+    }
+    return optimizer_instances[optimizer]
+
+
 def set_shape_create_model(name, ncols):
     """
     set_shape_create_model() returns a create_model function, 
-    taking as parameters the name and column input shape.
+    taking as parameters the name and column inumpyut shape.
     """
 
     def create_model(n_hidden=1, activation='relu', optimizer='adam',
-                     kernel_initializer='glorot_uniform', n_neurons=30):
+                     kernel_initializer='glorot_uniform', n_neurons=30,
+                     learning_rate=3):
         """
         create_model() returns a FNN model, 
         taking as parameters things you
         want to verify using cross-valdiation and model selection
         """
         # initialize a random seed for replication purposes
-        np.random.seed(23456)
+        numpy.random.seed(23456)
         tf.random.set_seed(123)
 
         model_layers = [
-            layers.Flatten(input_shape=[ncols, 1]),
+            layers.Flatten(inumpyut_shape=[ncols, 1]),
         ]
 
         for layer in range(n_hidden):
@@ -158,7 +171,7 @@ def set_shape_create_model(name, ncols):
 
         # Compiling our NN
         model.compile(loss='categorical_crossentropy',
-                      optimizer=optimizer,
+                      optimizer=get_learning_rate(learning_rate, optimizer),
                       metrics=['accuracy'])
 
         return model
@@ -204,16 +217,39 @@ class ColumnSelector(BaseEstimator, TransformerMixin):
 
 class Reshape1DTo2D(BaseEstimator, TransformerMixin):
     """
-    Reshape2D reshapes 1D input to 2D.
+    Reshape2D reshapes 1D inumpyut to 2D.
     """
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, X):
-        assert isinstance(X, np.ndarray)
+        assert isinstance(X, numpy.ndarray)
         nrows, ncols = X.shape
         return X.reshape(nrows, ncols, 1)
+
+
+class LogTransformation(BaseEstimator, TransformerMixin):
+    """
+    Log Transformation performs log transformation on input dataframe
+    """
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        assert isinstance(X, pandas.core.frame.DataFrame)
+        labels = X.columns.values
+        for label in labels:
+            curr_column = X.loc[:, label]
+            min_val = curr_column.min()
+            if min_val < 0:
+                increment = - min_val + 1
+                X.loc[:, label] = numpy.log(curr_column + increment)
+            else:
+                X.loc[:, label] = numpy.log(curr_column)
+
+        return X
 
 
 # def standardization_pipeline(predictors_all, predictors_with_outliers,
@@ -223,7 +259,7 @@ def standardization_pipeline(predictors_all, predictors_with_outliers,
     """
     standardization_pipeline() returns a Pipeline object, 
     taking as parameters the all labels in the dataset,
-    labels of predcitors with outliers, and ones without
+    labels of predictors with outliers, and ones without
     outliers.
     """
     if len(predictors_with_outliers) == 0:
@@ -244,7 +280,7 @@ def standardization_pipeline(predictors_all, predictors_with_outliers,
         FeatureUnion(transformer_list=[
             ('predictors_with_outliers', make_pipeline(
                 ColumnSelector(columns=predictors_with_outliers),
-                #                 FunctionTransformer(numpy.log),
+                LogTransformation(),
                 RobustScaler()
             )),
             ('predictors_without_outliers', make_pipeline(
@@ -281,7 +317,7 @@ def remote_imports():
     from pandas.api.types import CategoricalDtype
     import ipyparallel
     import librosa
-    import numpy as np
+    import numpy as numpy
     import os
     import pandas as pandas
     import pywt
@@ -328,10 +364,10 @@ def stats(feature):
     for a single feature.
     """
     return {
-        'mean': np.mean(feature),
-        'median': np.median(feature),
-        'std': np.std(feature),
-        'var': np.var(feature)
+        'mean': numpy.mean(feature),
+        'median': numpy.median(feature),
+        'std': numpy.std(feature),
+        'var': numpy.var(feature)
     }
 
 
@@ -355,15 +391,15 @@ def extra_stats(feature):
     and entropy, for a single feature list.
     """
     return {
-        'sb_energy': np.mean(np.abs(feature)),
+        'sb_energy': numpy.mean(numpy.abs(feature)),
         'skewness': skew(feature),
-        '5th_percentile': np.nanpercentile(feature, 5),
-        '25th_percentile': np.nanpercentile(feature, 25),
-        '75th_percentile': np.nanpercentile(feature, 75),
-        '95th_percentile': np.nanpercentile(feature, 95),
-        'rms': np.nanmean(np.sqrt(feature ** 2)),
-        'zcr': len(np.nonzero(np.diff(np.array(feature) > 0))[0]),
-        'mcr': len(np.nonzero(np.diff(np.array(feature) > np.nanmean(feature)))[0]),
+        '5th_percentile': numpy.nanumpyercentile(feature, 5),
+        '25th_percentile': numpy.nanumpyercentile(feature, 25),
+        '75th_percentile': numpy.nanumpyercentile(feature, 75),
+        '95th_percentile': numpy.nanumpyercentile(feature, 95),
+        'rms': numpy.nanmean(numpy.sqrt(feature ** 2)),
+        'zcr': len(numpy.nonzero(numpy.diff(numpy.array(feature) > 0))[0]),
+        'mcr': len(numpy.nonzero(numpy.diff(numpy.array(feature) > numpy.nanmean(feature)))[0]),
         'entropy': calc_entropy(feature),
     }
 
@@ -379,7 +415,7 @@ def extract_cqt(file):
 
     # compute cqt and convert from amplitude to decibels unit
     cqt = librosa.cqt(time_series, sample_rate);
-    scaled_cqt = librosa.amplitude_to_db(cqt, ref=np.max);
+    scaled_cqt = librosa.amplitude_to_db(cqt, ref=numpy.max);
 
     return scaled_cqt
 
@@ -395,7 +431,7 @@ def extract_mel_spect(file):
 
     # compute spectogram and convert spectogram to decibels unit 
     mel_spect = librosa.feature.melspectrogram(time_series, sample_rate);
-    scaled_mel_spect = librosa.power_to_db(mel_spect, ref=np.max);
+    scaled_mel_spect = librosa.power_to_db(mel_spect, ref=numpy.max);
 
     return scaled_mel_spect
 
@@ -1359,7 +1395,7 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
 
 def extract_features_make_prediction(filepath):
     """
-    This function takes path to a .wav audio file as input.
+    This function takes path to a .wav audio file as inumpyut.
     It extract features from the audio file, scales these
     features & make prediction with them.
 
