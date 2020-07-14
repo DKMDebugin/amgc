@@ -490,7 +490,7 @@ def extract_mel_spect(file):
     return scaled_mel_spect
 
 
-# store for all features to be extracted except log-mel and mel-spectogram.
+# store for all features to be extracted except log-mel and mel-spectrogram.
 dataframe = pandas.DataFrame({
     'genre_label': [],
     'data_source': [],
