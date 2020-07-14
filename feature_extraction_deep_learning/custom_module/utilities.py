@@ -6,15 +6,17 @@ from collections import Counter
 from scipy.stats import entropy, skew
 from sklearn.decomposition import PCA
 import joblib
-from tensorflow.keras import layers, models, optimizers
+from tensorflow.keras import layers, optimizers, callbacks
 import librosa
 from tensorflow.keras.models import Sequential, load_model
+from sklearn.model_selection import RandomizedSearchCV
 import numpy as numpy
 import pandas
 from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline
-from sklearn.preprocessing import FunctionTransformer, RobustScaler, StandardScaler, MinMaxScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 import matplotlib.pyplot as pyplot
 import pywt
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 import tensorflow as tf
 from pandas.api.types import CategoricalDtype
 
@@ -28,6 +30,40 @@ GENRES = ['hiphop', 'rock', 'pop']
 
 
 # utility classes and functions
+def train_model(X, y, model_name, ncols, build_fn, preprocess_pipeline,
+                param_dist, batch_size=32, epochs=100):
+    """
+    train_model() trains a model using cv and return
+    the best model score, params, & instance. Takes as
+    parameter model name (str), batch_size (int), epochs (int).
+    """
+    # create early stopping callback instance
+    early_stopping_cb = callbacks.EarlyStopping(
+        patience=10, restore_best_weights=True)
+
+    # wrap the function with keras wrapper
+    clf = KerasClassifier(build_fn=build_fn(model_name, ncols))
+
+    # create pipeline estimator
+    pipeline = Pipeline([
+        ('preprocess', preprocess_pipeline),
+        ('clf', clf)
+    ])
+
+    # instantiate RandomizedSearchCV
+    # if you're not using a GPU, you can set n_jobs to something other than 1
+    rscv = RandomizedSearchCV(pipeline, param_dist, cv=3, n_jobs=1)
+
+    # learn model & validate with 20% of the training dataset
+    search = rscv.fit(X, y, clf__batch_size=batch_size,
+                      clf__validation_split=0.2, clf__epochs=epochs,
+                      clf__callbacks=[early_stopping_cb])
+
+    print(search.best_score_, search.best_params_)
+
+    return search.best_score_, search.best_params_, search.best_estimator_
+
+
 def visualize_wavelet(signal, waveletname, level_of_dec):
     """
     visualize_wavelet() create original visualization for a signal and 
@@ -60,106 +96,67 @@ def visualize_wavelet(signal, waveletname, level_of_dec):
     pyplot.show()
 
 
-def set_shape_create_cnn_model(n_hidden=1, activation='relu', optimizer='adam',
-                               kernel_initializer='glorot_uniform', n_neurons=30,
-                               filters=16, kernel_size=3, dropout=0.25):
+def get_optimizer(lr, optimizer):
     """
-    set_shape_create_cnn_model() returns a CNN model,
-    taking as parameters things you want to verify
-    using cross validation and model selection
-    """
-    name = 'cnn'
-    ncols = 217
-
-    # initialize a random seed for replication purposes
-    numpy.random.seed(23456)
-    tf.random.set_seed(123)
-
-    model_layers = [
-        layers.Conv1D(
-            filters=filters, kernel_size=kernel_size,
-            activation=activation, inumpyut_shape=[ncols, 1]),
-    ]
-
-    index = 1
-    for layer in range(n_hidden):
-        index = index + 1
-        # add a maxpooling layer
-        model_layers.append(layers.MaxPooling1D())
-        # add convolutional layer
-        model_layers.append(
-            layers.Conv1D(
-                filters=index * filters, kernel_size=kernel_size,
-                activation=activation)
-        )
-
-    model_layers.append(layers.MaxPooling1D())
-    model_layers.append(layers.Flatten())
-
-    for layer in range(n_hidden):
-        model_layers.append(
-            layers.Dense(n_neurons, activation=activation,
-                         kernel_initializer=kernel_initializer)
-        )
-        model_layers.append(layers.Dropout(dropout))
-
-    # add an output layer
-    model_layers.append(layers.Dense(3, activation='softmax'))
-
-    # Initiating an empty NN
-    model = Sequential(layers=model_layers, name=name)
-
-    print(model.summary())
-
-    # Compiling our NN
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=optimizer,
-                  metrics=['accuracy'])
-
-    return model
-
-
-def get_learning_rate(learning_rate, optimizer):
-    """
-    get_learning_rate() returns a optimizer instance taking as parameter
+    get_optimizer() returns a optimizer instance taking as parameter
     learning_rate (int) and optimizer (str)
     """
     optimizer_instances = {
-        'rmsprop': optimizers.RMSprop(lr=learning_rate),
-        'adam': optimizers.Adam(lr=learning_rate),
-        'adagrad': optimizers.Adagrad(lr=learning_rate)
+        'rmsprop': optimizers.RMSprop(lr=lr),
+        'adam': optimizers.Adam(lr=lr),
+        'adagrad': optimizers.Adagrad(lr=lr)
     }
     return optimizer_instances[optimizer]
 
 
-def set_shape_create_model(name, ncols):
+def set_shape_create_cnn_model(name, ncols):
     """
-    set_shape_create_model() returns a create_model function, 
-    taking as parameters the name and column inumpyut shape.
+    set_shape_create_model() returns a create_cnn_model function,
+    taking as parameters the model name and column input shape.
     """
 
-    def create_model(n_hidden=1, activation='relu', optimizer='adam',
-                     kernel_initializer='glorot_uniform', n_neurons=30,
-                     learning_rate=3):
+    def create_cnn_model(n_hidden=1, activation='relu', optimizer='adam',
+                         kernel_initializer='glorot_uniform', units=30,
+                         filters=16, kernel_size=3, dropout=0.25, lr=3):
         """
-        create_model() returns a FNN model, 
-        taking as parameters things you
-        want to verify using cross-valdiation and model selection
+        create_cnn_model() returns a CNN model,
+        taking as parameters things you want to verify
+        using cross validation and model selection
         """
+        # name = 'cnn'
+        # ncols = 217
+
         # initialize a random seed for replication purposes
         numpy.random.seed(23456)
         tf.random.set_seed(123)
 
         model_layers = [
-            layers.Flatten(inumpyut_shape=[ncols, 1]),
+            layers.Conv1D(
+                filters=filters, kernel_size=kernel_size,
+                activation=activation, input_shape=[ncols, 1]),
         ]
 
+        index = 1
         for layer in range(n_hidden):
-            # add a dense layers
+            index = index + 1
+            # add a maxpooling layer
+            model_layers.append(layers.MaxPooling1D())
+            # add convolution layer
             model_layers.append(
-                layers.Dense(n_neurons, activation=activation,
+                layers.Conv1D(
+                    filters=index * filters, kernel_size=kernel_size,
+                    activation=activation)
+            )
+
+        model_layers.append(layers.MaxPooling1D())
+        model_layers.append(layers.Flatten())
+
+        for layer in range(n_hidden):
+            model_layers.append(
+                layers.Dense(units, activation=activation,
                              kernel_initializer=kernel_initializer)
             )
+            model_layers.append(layers.Dropout(dropout))
 
         # add an output layer
         model_layers.append(layers.Dense(3, activation='softmax'))
@@ -171,7 +168,57 @@ def set_shape_create_model(name, ncols):
 
         # Compiling our NN
         model.compile(loss='categorical_crossentropy',
-                      optimizer=get_learning_rate(learning_rate, optimizer),
+                      optimizer=get_optimizer(lr, optimizer),
+                      metrics=['accuracy'])
+
+        return model
+
+    return create_cnn_model
+
+
+def set_shape_create_model(name, ncols):
+    """
+    set_shape_create_model() returns a create_model function, 
+    taking as parameters the model name and column input shape.
+    """
+
+    def create_model(n_hidden=1, activation='relu', optimizer='adam',
+                     kernel_initializer='glorot_uniform', lr=3, units=30):
+        """
+        create_model() returns a FNN model, 
+        taking as parameters things you
+        want to verify using cross-validation and model selection
+        """
+        # initialize a random seed for replication purposes
+        numpy.random.seed(23456)
+        tf.random.set_seed(123)
+
+        model_layers = [
+            layers.Flatten(input_shape=[ncols, 1]),
+        ]
+
+        # multiplier = n_hidden + 1
+        # units = 3 * n_hidden
+        for layer in range(n_hidden):
+            # add a full-connected layer
+            # units = 3 * multiplier * multiplier
+            model_layers.append(
+                layers.Dense(units, activation=activation,
+                             kernel_initializer=kernel_initializer)
+            )
+            # multiplier -= 1
+
+        # add an output layer
+        model_layers.append(layers.Dense(3, activation='softmax'))
+
+        # Initiating the NN
+        model = Sequential(layers=model_layers, name=name)
+
+        print(model.summary())
+
+        # Compiling the NN
+        model.compile(loss='categorical_crossentropy',
+                      optimizer=get_optimizer(lr, optimizer),
                       metrics=['accuracy'])
 
         return model
@@ -217,7 +264,7 @@ class ColumnSelector(BaseEstimator, TransformerMixin):
 
 class Reshape1DTo2D(BaseEstimator, TransformerMixin):
     """
-    Reshape2D reshapes 1D inumpyut to 2D.
+    Reshape2D reshapes 1D input to 2D.
     """
 
     def fit(self, X, y=None):
@@ -239,6 +286,13 @@ class LogTransformation(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         assert isinstance(X, pandas.core.frame.DataFrame)
+
+        # silence the SettingWithCopyWarning as values are
+        # being set the right way using .loc[] not [].
+        # The interpreter doesnt know the difference so
+        # it would've displayed the warning nonetheless
+        pandas.options.mode.chained_assignment = None
+
         labels = X.columns.values
         for label in labels:
             curr_column = X.loc[:, label]
@@ -247,7 +301,7 @@ class LogTransformation(BaseEstimator, TransformerMixin):
                 increment = - min_val + 1
                 X.loc[:, label] = numpy.log(curr_column + increment)
             else:
-                X.loc[:, label] = numpy.log(curr_column)
+                X.loc[:, label] = numpy.log(curr_column + 1)
 
         return X
 
@@ -1395,7 +1449,7 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
 
 def extract_features_make_prediction(filepath):
     """
-    This function takes path to a .wav audio file as inumpyut.
+    This function takes path to a .wav audio file as input.
     It extract features from the audio file, scales these
     features & make prediction with them.
 
