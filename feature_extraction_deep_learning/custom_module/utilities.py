@@ -134,7 +134,7 @@ def set_shape_create_cnn_model(name, ncols):
         model_layers = [
             layers.Conv1D(
                 filters=filters, kernel_size=kernel_size,
-                activation=activation, input_shape=[ncols, 1]),
+                input_shape=[ncols, 1]),
         ]
 
         index = 1
@@ -298,11 +298,8 @@ class LogTransformation(BaseEstimator, TransformerMixin):
         for label in labels:
             curr_column = X.loc[:, label]
             min_val = curr_column.min()
-            if min_val < 0:
-                increment = - min_val + 1
-                X.loc[:, label] = numpy.log(curr_column + increment)
-            else:
-                X.loc[:, label] = numpy.log(curr_column + 1)
+            increment = numpy.abs(min_val) + 1
+            X.loc[:, label] = numpy.log(curr_column + increment)
 
         return X
 
@@ -448,10 +445,10 @@ def extra_stats(feature):
     return {
         'sb_energy': numpy.mean(numpy.abs(feature)),
         'skewness': skew(feature),
-        '5th_percentile': numpy.nanumpyercentile(feature, 5),
-        '25th_percentile': numpy.nanumpyercentile(feature, 25),
-        '75th_percentile': numpy.nanumpyercentile(feature, 75),
-        '95th_percentile': numpy.nanumpyercentile(feature, 95),
+        '5th_percentile': numpy.nanpercentile(feature, 5),
+        '25th_percentile': numpy.nanpercentile(feature, 25),
+        '75th_percentile': numpy.nanpercentile(feature, 75),
+        '95th_percentile': numpy.nanpercentile(feature, 95),
         'rms': numpy.nanmean(numpy.sqrt(feature ** 2)),
         'zcr': len(numpy.nonzero(numpy.diff(numpy.array(feature) > 0))[0]),
         'mcr': len(numpy.nonzero(numpy.diff(numpy.array(feature) > numpy.nanmean(feature)))[0]),
@@ -1458,19 +1455,18 @@ def extract_features_make_prediction(filepath):
     filepath (str): path to a .wav audio file
     """
 
-    features = extract_audio_features(dataframe, filepath, '', '').values[:, 2:]
-    pipeline_estimator_path = MOUNTED_DATASET_PATH + '/model/pipeline_estimator.pkl'
+    features = extract_audio_features(dataframe, SAMPLE_HIPHOP_FILE_PATH, '', '')
+    X = features.drop(['data_source', 'lpc_1', 'genre_label'], axis=1)
+
+    pipeline_estimator_path = MOUNTED_DATASET_PATH + '/model/pipeline_estimator_2.pkl'
+    model_path = MOUNTED_DATASET_PATH + '/model/cnn_model_2.h5'
+
     pipeline_estimator = joblib.load(pipeline_estimator_path)
-    model_path = MOUNTED_DATASET_PATH + '/model/cnn_model.h5'
     model = load_model(model_path)
-    # model = models.load_model(MOUNTED_DATASET_PATH + '/model/cnn_model.h5')
-    # print(features)
-    features = pipeline_estimator.transform(features)
-    # print(features)
-    prediction = model.predict_proba(features)
-    # print(prediction)
-    # print(model.predict_proba(features, verbose=1))
-    # print(model.predict_classes(features))
+
+    X = pipeline_estimator.transform(X)
+    prediction = model.predict(X)
+
     map_prediction_to_genre = {}
     for i in range(3):
         map_prediction_to_genre[GENRES[i]] = prediction[0][i].item()
