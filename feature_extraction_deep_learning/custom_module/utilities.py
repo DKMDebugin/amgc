@@ -9,6 +9,11 @@ import joblib
 from tensorflow.keras import layers, optimizers, callbacks
 import librosa
 from tensorflow.keras.models import Sequential, load_model
+from sklearn.metrics import ( 
+    confusion_matrix, accuracy_score, 
+    precision_recall_fscore_support,
+    roc_curve, auc
+)
 from sklearn.model_selection import RandomizedSearchCV
 import numpy
 import pandas
@@ -16,6 +21,7 @@ from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 import matplotlib.pyplot as pyplot
 import pywt
+import seaborn
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 import tensorflow as tf
 from pandas.api.types import CategoricalDtype
@@ -28,9 +34,170 @@ SAMPLE_HIPHOP_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/hiphop.00000.w
 SAMPLE_POP_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/pop.00000.wav'
 SAMPLE_ROCK_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/rock.00000.wav'
 GENRES = ['hiphop', 'rock', 'pop']
+GENRES_MAP = {
+    0: 'hiphop',
+    1: 'rock',
+    2: 'pop'
+}
+# set log directory for tensorboard logs
+root_logdir = os.path.join(os.curdir, "my_logs")
 
 
 # utility classes and functions
+def visualize_conf_metrics(X_test, y_test, model):
+    '''
+    visualize_conf_metrics() plot the confusion metrics
+    taking as parameter the test data.
+    '''
+    # make prediction on test data
+    predicted_y_test = model.predict_proba(X_test)
+
+    # compute confusion matrix
+    conf_matrix = confusion_matrix(
+        numpy.argmax(y_test, 1), numpy.argmax(predicted_y_test, 1))
+    conf_matrix = pandas.DataFrame(conf_matrix)
+    conf_matrix = conf_matrix.rename(columns=GENRES_MAP)
+    conf_matrix.index = conf_matrix.columns
+    
+    # plot confusion matrix
+    pyplot.figure(figsize= (20,12))
+    seaborn.set(font_scale = 2);
+    ax = seaborn.heatmap(conf_matrix, annot=True, cmap=seaborn.cubehelix_palette(50));
+    ax.set(xlabel='Predicted Values', ylabel='Actual Values');
+    
+    
+def evaluate_model(X_test, y_test, model):
+    """
+    evaluate_model() returns evaluation metrics to 
+    measure the performace of the model. Taking as 
+    parameter test data and model instance.
+    """
+    mean_fpr = numpy.linspace(start=0, stop=1, num=100)
+    
+    # compute probabilistic predictiond for the evaluation set
+    probabilities = model.predict_proba(X_test)[:, 1]
+    
+    # compute exact predictiond for the evaluation set
+    predicted_values = model.predict(X_test)
+        
+    # compute accuracy
+    accuracy = accuracy_score(y_test, predicted_values)
+        
+    # compute precision, recall and f1 score for class 1
+    precision, recall, f1_score, _ = precision_recall_fscore_support(y_test, predicted_values, labels=[1])
+    
+#     # compute fpr and tpr values for various thresholds 
+#     # by comparing the true target values to the predicted probabilities for class 1
+#     fpr, tpr, _ = roc_curve(y_test, probabilities)
+        
+#     # compute true positive rates for the values in the array mean_fpr
+#     tpr_transformed = np.array([interp(mean_fpr, fpr, tpr)])
+    
+#     # compute the area under the curve
+#     auc = auc(fpr, tpr)
+            
+    return accuracy, precision[0], recall[0], f1_score[0]
+
+
+def get_run_logdir(): 
+    '''
+    get_run_logdir() generates subdirectory path with
+    current date & time.
+    '''   
+    import time
+    run_id = time.strftime("run_%Y_%m_%d-%H_%M_%S") 
+    return os.path.join(root_logdir, run_id)
+
+
+def training_best_model(X_train, y_train, model_name, ncols,
+                        build_fn, preprocess_pipeline, params, batch_size=32,
+                        epochs=100):
+    """
+    training_best_model() trains the best model
+    from each subsets and returns an instance
+    of the model. Taking as params things you 
+    need to train a model.
+    """
+    # create early stopping callback instance
+    early_stopping_cb = callbacks.EarlyStopping(
+        patience=10, restore_best_weights=True)
+    
+    # generate log dir and create tensorboard callback instance 
+    run_logdir = get_run_logdir() # e.g., './my_logs/run_2019_01_16-11_28_43'
+    tensorboard_cb = callbacks.TensorBoard(run_logdir) 
+
+    # wrap the function with keras wrapper
+    clf = KerasClassifier(build_fn=build_fn(model_name, ncols))
+    
+    # pass-in params to be used to create model
+    clf.set_params(**params)
+
+    # create pipeline estimator
+    estimator = Pipeline([
+        ('preprocess', preprocess_pipeline),
+        ('clf', clf)
+    ])
+
+    # learn model & validate with 20% of the training dataset
+    estimator.fit(X_train, y_train, clf__batch_size=batch_size,
+                  clf__validation_split=0.2, clf__epochs=epochs,
+                  clf__callbacks=[early_stopping_cb, tensorboard_cb])
+
+    return estimator
+
+
+def create_norm_pipelines(features):
+    """
+    create_norm_pipelines() returns a dict of 
+    normalization pipeline instances of four 
+    subsets of the dataset taking as parameter
+    features (pandas.DataFrame).
+    """
+    # break into subset
+    (timbral_rhythmic_predictors, predictors_with_pos_corr,
+     wavelet_predictors) = break_into_subsets(features)
+    all_predictors = features.drop('genre_label', axis=1)
+    
+    # create dict of pipeline instances for each subset     
+    norm_pipelines = {
+        'all': normalization_pipeline(
+            all_predictors.columns.values),
+        'tr': normalization_pipeline(
+            timbral_rhythmic_predictors.columns.values),
+        'pos_corr': normalization_pipeline(
+            predictors_with_pos_corr.columns.values),
+        'wavelet': normalization_pipeline(
+            wavelet_predictors.columns.values)
+    }
+    
+    return norm_pipelines
+
+
+def break_into_subsets(features):
+    """
+    break_into_subsets() returns subsets of the dataset
+    taking as parameter features (pandas.DataFrame).
+    """
+    
+    # get wavelet subset     
+    wavelet_predictors = features.filter(regex=(r'.+_db[458]{1}_.+'))
+    
+    # get timbral & rhytmic subset
+    wavelet_predictors_labels = wavelet_predictors.columns.values
+    timbral_rhythmic_predictors = features.loc[:, features.columns.difference(
+        numpy.append(wavelet_predictors_labels, 'genre_label'))]
+    
+    # get features with +ve correlation with the target subset
+    corr_wf_target = features.corr()[['genre_label']].sort_values(
+        by=['genre_label'], ascending=False)
+    predictor_labels_with_pos_corr = corr_wf_target.loc[
+        corr_wf_target.loc[:,'genre_label'] > 0].index.values
+    predictors_wf_pos_corr = features.loc[
+        :, predictor_labels_with_pos_corr].drop('genre_label', axis=1)
+    
+    return timbral_rhythmic_predictors, predictors_wf_pos_corr, wavelet_predictors
+
+
 def train_model(X, y, model_name, ncols, build_fn, preprocess_pipeline,
                 param_dist, batch_size=32, epochs=100):
     """
