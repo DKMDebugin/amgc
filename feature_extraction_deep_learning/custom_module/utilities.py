@@ -1621,19 +1621,34 @@ def extract_features_make_prediction(filepath):
     Parameter:
     filepath (str): path to a .wav audio file
     """
+    
+    # extract features
+    features = extract_audio_features(dataframe, filepath, '', '')
+    
+    # drop some columns
+    features = features.drop(['data_source', 'lpc_1'], axis=1)
+    
+    # filter wavelet features & collect labels
+    wavelet_predictors = features.filter(regex=(r'.+_db[458]{1}_.+'))
+    wavelet_predictors_labels = wavelet_predictors.columns.values
+    
+    # collect timbral & rhythmic features
+    timbral_rhythmic_predictors = features.loc[:, features.columns.difference(
+        numpy.append(wavelet_predictors_labels, 'genre_label'))]
+    X = timbral_rhythmic_predictors
 
-    features = extract_audio_features(dataframe, SAMPLE_HIPHOP_FILE_PATH, '', '')
-    X = features.drop(['data_source', 'lpc_1', 'genre_label'], axis=1)
-
-    pipeline_estimator_path = MOUNTED_DATASET_PATH + '/model/pipeline_estimator_2.pkl'
-    model_path = MOUNTED_DATASET_PATH + '/model/cnn_model_2.h5'
-
+    pipeline_estimator_path = MOUNTED_DATASET_PATH + '/model/pipeline_estimator_3.pkl'
+    model_path = MOUNTED_DATASET_PATH + '/model/cnn_model_3.h5'
+    
+    # load preprocessing pipeline and model instance
     pipeline_estimator = joblib.load(pipeline_estimator_path)
     model = load_model(model_path)
-
+    
+    # transform data & make predictions
     X = pipeline_estimator.transform(X)
     prediction = model.predict(X)
-
+    
+    # map predictions to genres
     map_prediction_to_genre = {}
     for i in range(3):
         map_prediction_to_genre[GENRES[i]] = prediction[0][i].item()
