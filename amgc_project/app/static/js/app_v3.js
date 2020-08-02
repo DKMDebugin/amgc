@@ -16,6 +16,7 @@ let recordButton = document.getElementById('recordButton')
 let stopButton = document.getElementById('stopButton')
 let resetButton = document.getElementById('resetButton')
 let sendButton = document.getElementById('sendButton')
+let spinner = document.getElementById('spinner')
 
 // Main
 window.onload = function()  {
@@ -121,6 +122,8 @@ function stopRecording(){
 function sendAudioDataAndPresentResult(blob) {
     console.log('Sending data to server side')
 
+    spinner.style.display = 'block'
+
     let filename = 'audio.wav'
     let formData = new FormData()
 
@@ -132,8 +135,9 @@ function sendAudioDataAndPresentResult(blob) {
     }).then(res => res.json())
     .then(data => {
         console.log('Present results')
+        spinner.style.display = 'none'
         plotPieChart(data.prediction)
-        plotLineGraph(data.analysis)
+        // plotLineGraph(data.analysis)
     }).catch(err => {
         console.log(err)
     })
@@ -154,7 +158,7 @@ function resetRecording(){
     progressBar.style.webkitAnimationName = ""
 
     // remove charts
-    if(document.getElementById('results').children[0].children.length > 0){
+    if(document.getElementById('results').children[2].children.length > 0){
 
         document.getElementById('pieChartDiv').children[0].remove()
         document.getElementById('lineChartDiv').children[0].remove()
@@ -265,6 +269,7 @@ function plotPieChart(data){
             // console.log(pos)
             return 'translate(' + pos + ')'
         })
+        .style("fill", "white")
         .style('text-anchor', function (d) {
             let midangle
 
@@ -295,23 +300,37 @@ function plotLineGraph(data){
     let x = d3.scaleLinear()
       .domain([0, d3.max(data, function(d) { return +d.timestamps })])
       .range([ 0, width ])
+
     svg.append("g")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x))
+        .attr("transform", "translate(0," + height + ")")
+        .style("stroke", "white")
+        .call(d3.axisBottom(x))
+
+    // svg.append("g").selectAll("text")
+    // .data(data)
+    // .enter()
+    // .append("text")
+    // .attr("transform", "translate(0," + height + ")")
+    // .attr("fill", "red")
+    // .text(function(d) {
+    //     return "X axis"
+    // });
 
     // Add Y axis
     let y = d3.scaleLinear()
       .domain([0, d3.max(data, function(d) { return +d.beats })])
       .range([ height, 0 ])
+
     svg.append("g")
-      .call(d3.axisLeft(y))
+        .style("stroke", "white")
+        .call(d3.axisLeft(y))
 
     // Add the line
     svg.append("path")
       .datum(data)
       .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 1.5)
+        .attr("stroke", "white")
+        .attr("stroke-width", 1.5)
       .attr("d", d3.line()
         .x(function(d) { return x(d.timestamps) })
         .y(function(d) { return y(d.beats) })

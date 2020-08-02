@@ -18,7 +18,6 @@ h1 {
 }
 
 .progress {
-    /*background-color: #e4c465;*/
     background-color: hsl(359,45%,52%);
 }
 
@@ -36,6 +35,11 @@ button {
     font-size: 95%;
 }
 
+button:disabled {
+    background-color: #dcdcd9;
+    color: #607D8B;
+}
+
 body {
     color: #dcdcd9;
     background-color: hsla(230,11%,19%,1);
@@ -47,9 +51,12 @@ body {
     margin-top: 10px;
 }
 
-#operationButtons {
+#operationButtons, #results, #spinner {
     margin: 15px;
 }
-text {
-    color: white;
+
+#spinner {
+    font-size: 100px;
+    text-align: left;
+    color: #dcdcd9;
 }

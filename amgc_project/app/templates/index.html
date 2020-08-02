@@ -21,12 +21,17 @@
     </div>
 
     <div id="results">
+        <div id="resultText">Result: </div>
+        <div id="spinner" style="display:none;">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
         <div id="pieChartDiv"></div>
         <div id="lineChartDiv"></div>
     </div>
 
     <script src="https://cdn.rawgit.com/mattdiamond/Recorderjs/08e7abd9/dist/recorder.js"></script>
     <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://kit.fontawesome.com/5cc2e912bd.js"></script>
     <script src="{{ url_for('static', filename='js/app_v3.js') }}"></script>
 
   </body>
