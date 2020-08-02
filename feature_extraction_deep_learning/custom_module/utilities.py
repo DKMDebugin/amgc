@@ -9,8 +9,8 @@ import joblib
 from tensorflow.keras import layers, optimizers, callbacks
 import librosa
 from tensorflow.keras.models import Sequential, load_model
-from sklearn.metrics import ( 
-    confusion_matrix, accuracy_score, 
+from sklearn.metrics import (
+    confusion_matrix, accuracy_score,
     precision_recall_fscore_support,
     roc_curve, auc
 )
@@ -25,7 +25,6 @@ import seaborn
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 import tensorflow as tf
 from pandas.api.types import CategoricalDtype
-
 
 # constants
 SYS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
@@ -58,14 +57,14 @@ def visualize_conf_metrics(X_test, y_test, model):
     conf_matrix = pandas.DataFrame(conf_matrix)
     conf_matrix = conf_matrix.rename(columns=GENRES_MAP)
     conf_matrix.index = conf_matrix.columns
-    
+
     # plot confusion matrix
-    pyplot.figure(figsize= (20,12))
-    seaborn.set(font_scale = 2);
+    pyplot.figure(figsize=(20, 12))
+    seaborn.set(font_scale=2);
     ax = seaborn.heatmap(conf_matrix, annot=True, cmap=seaborn.cubehelix_palette(50));
     ax.set(xlabel='Predicted Values', ylabel='Actual Values');
-    
-    
+
+
 def evaluate_model(X_test, y_test, model):
     """
     evaluate_model() returns evaluation metrics to 
@@ -73,39 +72,39 @@ def evaluate_model(X_test, y_test, model):
     parameter test data and model instance.
     """
     mean_fpr = numpy.linspace(start=0, stop=1, num=100)
-    
+
     # compute probabilistic predictiond for the evaluation set
     probabilities = model.predict_proba(X_test)[:, 1]
-    
+
     # compute exact predictiond for the evaluation set
     predicted_values = model.predict(X_test)
-        
+
     # compute accuracy
     accuracy = accuracy_score(y_test, predicted_values)
-        
+
     # compute precision, recall and f1 score for class 1
     precision, recall, f1_score, _ = precision_recall_fscore_support(y_test, predicted_values, labels=[1])
-    
-#     # compute fpr and tpr values for various thresholds 
-#     # by comparing the true target values to the predicted probabilities for class 1
-#     fpr, tpr, _ = roc_curve(y_test, probabilities)
-        
-#     # compute true positive rates for the values in the array mean_fpr
-#     tpr_transformed = np.array([interp(mean_fpr, fpr, tpr)])
-    
-#     # compute the area under the curve
-#     auc = auc(fpr, tpr)
-            
+
+    #     # compute fpr and tpr values for various thresholds
+    #     # by comparing the true target values to the predicted probabilities for class 1
+    #     fpr, tpr, _ = roc_curve(y_test, probabilities)
+
+    #     # compute true positive rates for the values in the array mean_fpr
+    #     tpr_transformed = np.array([interp(mean_fpr, fpr, tpr)])
+
+    #     # compute the area under the curve
+    #     auc = auc(fpr, tpr)
+
     return accuracy, precision[0], recall[0], f1_score[0]
 
 
-def get_run_logdir(): 
+def get_run_logdir():
     '''
     get_run_logdir() generates subdirectory path with
     current date & time.
-    '''   
+    '''
     import time
-    run_id = time.strftime("run_%Y_%m_%d-%H_%M_%S") 
+    run_id = time.strftime("run_%Y_%m_%d-%H_%M_%S")
     return os.path.join(root_logdir, run_id)
 
 
@@ -121,14 +120,14 @@ def training_best_model(X_train, y_train, model_name, ncols,
     # create early stopping callback instance
     early_stopping_cb = callbacks.EarlyStopping(
         patience=10, restore_best_weights=True)
-    
+
     # generate log dir and create tensorboard callback instance 
-    run_logdir = get_run_logdir() # e.g., './my_logs/run_2019_01_16-11_28_43'
-    tensorboard_cb = callbacks.TensorBoard(run_logdir) 
+    run_logdir = get_run_logdir()  # e.g., './my_logs/run_2019_01_16-11_28_43'
+    tensorboard_cb = callbacks.TensorBoard(run_logdir)
 
     # wrap the function with keras wrapper
     clf = KerasClassifier(build_fn=build_fn(model_name, ncols))
-    
+
     # pass-in params to be used to create model
     clf.set_params(**params)
 
@@ -157,7 +156,7 @@ def create_norm_pipelines(features):
     (timbral_rhythmic_predictors, predictors_with_pos_corr,
      wavelet_predictors) = break_into_subsets(features)
     all_predictors = features.drop('genre_label', axis=1)
-    
+
     # create dict of pipeline instances for each subset     
     norm_pipelines = {
         'all': normalization_pipeline(
@@ -169,7 +168,7 @@ def create_norm_pipelines(features):
         'wavelet': normalization_pipeline(
             wavelet_predictors.columns.values)
     }
-    
+
     return norm_pipelines
 
 
@@ -178,23 +177,23 @@ def break_into_subsets(features):
     break_into_subsets() returns subsets of the dataset
     taking as parameter features (pandas.DataFrame).
     """
-    
+
     # get wavelet subset     
     wavelet_predictors = features.filter(regex=(r'.+_db[458]{1}_.+'))
-    
+
     # get timbral & rhytmic subset
     wavelet_predictors_labels = wavelet_predictors.columns.values
     timbral_rhythmic_predictors = features.loc[:, features.columns.difference(
         numpy.append(wavelet_predictors_labels, 'genre_label'))]
-    
+
     # get features with +ve correlation with the target subset
     corr_wf_target = features.corr()[['genre_label']].sort_values(
         by=['genre_label'], ascending=False)
     predictor_labels_with_pos_corr = corr_wf_target.loc[
-        corr_wf_target.loc[:,'genre_label'] > 0].index.values
+        corr_wf_target.loc[:, 'genre_label'] > 0].index.values
     predictors_wf_pos_corr = features.loc[
-        :, predictor_labels_with_pos_corr].drop('genre_label', axis=1)
-    
+                             :, predictor_labels_with_pos_corr].drop('genre_label', axis=1)
+
     return timbral_rhythmic_predictors, predictors_wf_pos_corr, wavelet_predictors
 
 
@@ -1082,6 +1081,33 @@ def feedback(file, genre_label):
         print('appended features extracted from ' + str(file.name) + ' with genre: ' + genre_label)
 
 
+def get_time_series_sample_rate(file):
+    """
+    get_time_series_sample_rate() return the sample rate & time series
+    of the audio file taking as parameter the file path or file object
+    """
+    if type(file) == str:
+        sample_rate = librosa.core.get_samplerate(file)
+        time_series, _ = librosa.core.load(file, sample_rate)
+    else:
+        sample_rate = librosa.core.get_samplerate(file.path)
+        time_series, _ = librosa.core.load(file.path, sample_rate)
+
+    return sample_rate, time_series
+
+
+def extract_beats_time(time_series, sample_rate):
+    """
+    extract_beats_time() computes the tempo, beats & time stamp of beats
+    for an audio file taking as parameter the time series and sample rate of the
+    audi file.
+    """
+    tempo, beats = librosa.beat.beat_track(time_series, sample_rate)
+    beats_timestamp = librosa.frames_to_time(beats, sample_rate)
+
+    return tempo, beats, beats_timestamp
+
+
 def extract_audio_features(dataframe, file, genre_label, data_source):
     """
     This function takes a dataframe, an audio file (check librosa for acceptable formats),
@@ -1098,12 +1124,7 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
     """
 
     # get sample rate of audio file & load audio file as time series
-    if type(file) == str:
-        sample_rate = librosa.core.get_samplerate(file)
-        time_series, _ = librosa.core.load(file, sample_rate)
-    else:
-        sample_rate = librosa.core.get_samplerate(file.path)
-        time_series, _ = librosa.core.load(file.path, sample_rate)
+    sample_rate, time_series = get_time_series_sample_rate(file)
 
     # compute timbral features
     # compute spectral centroid
@@ -1152,12 +1173,9 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
     lpc = librosa.lpc(time_series, 3)
 
     # compute rhythmic features
-    # compute tempo & beats
-    tempo, beats = librosa.beat.beat_track(time_series, sample_rate)
+    # compute tempo, beats & beats' time stamp
+    tempo, beats,beats_timestamp = extract_beats_time(time_series, sample_rate)
     stats_beats = stats(beats)
-
-    # compute timestamps from beats
-    beats_timestamp = librosa.frames_to_time(beats, sample_rate)
     stats_beats_timestamp = stats(beats_timestamp)
 
     # compute wavelet features
@@ -1612,6 +1630,22 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
     return dataframe
 
 
+def map_beats_to_timestamp(file):
+    """
+    map_beats_to_timestamp() maps
+    beats (numpy.Array) to timestamps (numpy.Array)
+    """
+    output = []
+
+    sample_rate, time_series = get_time_series_sample_rate(file)
+    _, beats, beats_timestamps = extract_beats_time(time_series, sample_rate)
+
+    for x, y in zip(beats, beats_timestamps):
+        output.append({'beats': x.item(), 'timestamps': y.item()})
+
+    return output
+
+
 def extract_features_make_prediction(filepath):
     """
     This function takes path to a .wav audio file as input.
@@ -1621,17 +1655,20 @@ def extract_features_make_prediction(filepath):
     Parameter:
     filepath (str): path to a .wav audio file
     """
-    
+
     # extract features
     features = extract_audio_features(dataframe, filepath, '', '')
-    
+
+    # extract beats & timestamp separately for analysis
+    beats_and_timestamps = map_beats_to_timestamp(filepath)
+
     # drop some columns
     features = features.drop(['data_source', 'lpc_1'], axis=1)
-    
+
     # filter wavelet features & collect labels
     wavelet_predictors = features.filter(regex=(r'.+_db[458]{1}_.+'))
     wavelet_predictors_labels = wavelet_predictors.columns.values
-    
+
     # collect timbral & rhythmic features
     timbral_rhythmic_predictors = features.loc[:, features.columns.difference(
         numpy.append(wavelet_predictors_labels, 'genre_label'))]
@@ -1639,18 +1676,23 @@ def extract_features_make_prediction(filepath):
 
     pipeline_estimator_path = MOUNTED_DATASET_PATH + '/model/pipeline_estimator_3.pkl'
     model_path = MOUNTED_DATASET_PATH + '/model/cnn_model_3.h5'
-    
+
     # load preprocessing pipeline and model instance
     pipeline_estimator = joblib.load(pipeline_estimator_path)
     model = load_model(model_path)
-    
+
     # transform data & make predictions
     X = pipeline_estimator.transform(X)
     prediction = model.predict(X)
-    
+
     # map predictions to genres
     map_prediction_to_genre = {}
     for i in range(3):
         map_prediction_to_genre[GENRES[i]] = prediction[0][i].item()
 
-    return map_prediction_to_genre
+    data = {
+        'prediction': map_prediction_to_genre,
+        'analysis': beats_and_timestamps
+    }
+
+    return data
