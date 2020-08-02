@@ -1,0 +1,55 @@
+h1 {
+  color: red;
+}
+
+.meter {
+    height: 30px;
+    width: 460px;
+    margin-left: 15px;
+    border-radius: 5px;
+    position: relative;
+    background: #f3efe6;
+    overflow: hidden;
+}
+
+.meter span {
+    display: block;
+    height: 100%;
+}
+
+.progress {
+    /*background-color: #e4c465;*/
+    background-color: hsl(359,45%,52%);
+}
+
+@keyframes progressBar {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+button {
+    color: #dcdcd9;
+    background-color: #607D8B;
+    height: 45px;
+    width: 90px;
+    border-radius: 5px;
+    font-size: 95%;
+}
+
+body {
+    color: #dcdcd9;
+    background-color: hsla(230,11%,19%,1);
+    font-size: 95%;
+    margin: 20px;
+}
+
+#formats {
+    margin-top: 10px;
+}
+
+#operationButtons {
+    margin: 15px;
+}
+text {
+    color: white;
+}

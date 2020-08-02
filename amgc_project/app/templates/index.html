@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>AMGC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/index.css">
+  </head>
+  <body>
+
+    <div class="meter">
+        <span><span class="progress"></span></span>
+    </div>
+
+    <div id="operationButtons">
+        <button id="recordButton">Record</button>
+        <button id="stopButton" disabled>Pause</button>
+        <button id="resetButton" disabled>Reset</button>
+        <button id="sendButton" disabled>Send</button>
+        <div id="formats">Format: start recording to see sample rate</div>
+    </div>
+
+    <div id="results">
+        <div id="pieChartDiv"></div>
+        <div id="lineChartDiv"></div>
+    </div>
+
+    <script src="https://cdn.rawgit.com/mattdiamond/Recorderjs/08e7abd9/dist/recorder.js"></script>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="{{ url_for('static', filename='js/app_v3.js') }}"></script>
+
+  </body>
+</html>
