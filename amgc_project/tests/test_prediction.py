@@ -1,6 +1,11 @@
 import os
 import unittest
-from amgc_project.app import app
+import sys
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, ROOT_DIR)
+
+from app import app
 
 
 class TestPrediction(unittest.TestCase):
@@ -15,7 +20,6 @@ class TestPrediction(unittest.TestCase):
         response = self.client.post('/audio', data={
             'audio_data': open(self.filepath, "rb")
         })
-        print(response.get_json())
         assert response.status_code == 200
 
     def test_prediction_response_datatype_len(self):

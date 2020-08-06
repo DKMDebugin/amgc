@@ -1,4 +1,10 @@
-from amgc_project.app.create_amgc_app import *
+import os
+import sys
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, ROOT_DIR)
+
+from app.create_amgc_app import create_amgc_app
 
 app = create_amgc_app()
 

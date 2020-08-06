@@ -10,14 +10,14 @@ sys.path.insert(1, BASE_DIR + '/feature_extraction_deep_learning/')
 
 from custom_module.utilities import extract_features_make_prediction
 
-UPLOAD_FOLDER = f'{WORKING_DIR}/file'
-ALLOWED_EXTENSIONS = {'wav'}
-
 
 def create_amgc_app():
     """
     create_app() creates a flask app.
     """
+    UPLOAD_FOLDER = f'{WORKING_DIR}/file'
+    ALLOWED_EXTENSIONS = {'wav'}
+
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(SECRET_KEY='dev')
@@ -35,7 +35,6 @@ def create_amgc_app():
                filename.split('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
     # routes & controllers
-
     @app.route('/')
     def home():
         return render_template('index.html')
@@ -50,9 +49,10 @@ def create_amgc_app():
                     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     file.save(filepath)
                     prediction = extract_features_make_prediction(filepath)
-                    print(prediction)
                     return jsonify(prediction), 200
 
-            return {'Error': 'File is not in wav format or has not filename'}, 400
+                return {'Error': 'File is not in .wav format.'}, 400
+
+            return {'Error': 'File has no filename'}, 400
 
     return app
