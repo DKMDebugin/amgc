@@ -18,7 +18,7 @@ h1 {
 }
 
 .progress {
-    background-color: hsl(359,45%,52%);
+    background-color: #420d14;
 }
 
 @keyframes progressBar {
@@ -28,7 +28,7 @@ h1 {
 
 button {
     color: #dcdcd9;
-    background-color: #607D8B;
+    background-color: #2e3b42;
     height: 45px;
     width: 90px;
     border-radius: 5px;
@@ -42,7 +42,7 @@ button:disabled {
 
 body {
     color: #dcdcd9;
-    background-color: hsla(230,11%,19%,1);
+    background-color: #355367;
     font-size: 95%;
     margin: 20px;
 }

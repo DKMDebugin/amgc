@@ -25,6 +25,8 @@ window.onload = function()  {
     stopButton.addEventListener('click', stopRecording)
     resetButton.addEventListener('click', resetRecording)
     sendButton.addEventListener('click', sendRecording)
+    progressBar.addEventListener('animationend', stopRecording)
+
 }
 
 // Utilities
@@ -112,6 +114,7 @@ function stopRecording(){
         //resume
         rec.record()
         stopButton.innerHTML='Pause'
+        sendButton.disabled = true
 
         // resume progress bar
         progressBar.style.webkitAnimationPlayState = "running"
@@ -122,6 +125,9 @@ function stopRecording(){
 function sendAudioDataAndPresentResult(blob) {
     console.log('Sending data to server side')
 
+    // remove chart if one is present
+    removeChart()
+    // display spinner
     spinner.style.display = 'block'
 
     let filename = 'audio.wav'
@@ -158,18 +164,22 @@ function resetRecording(){
     progressBar.style.webkitAnimationName = ""
 
     // remove charts
-    if(document.getElementById('results').children[2].children.length > 0){
-
-        document.getElementById('pieChartDiv').children[0].remove()
-        document.getElementById('lineChartDiv').children[0].remove()
-
-    }
+    removeChart()
 }
 
 function sendRecording(){
     if (!rec.recording) {
         rec.exportWAV(sendAudioDataAndPresentResult)
     }
+}
+
+function removeChart(){
+  if(document.getElementById('results').children[2].children.length > 0){
+
+      document.getElementById('pieChartDiv').children[0].remove()
+      //document.getElementById('lineChartDiv').children[0].remove()
+
+  }
 }
 
 function plotPieChart(data){
@@ -190,7 +200,7 @@ function plotPieChart(data){
     // set the color scale
     let color = d3.scaleOrdinal()
       .domain(data)
-      .range(["#B1D8B7", "#D2FBA4", "#ECF87F"])
+      .range(["#58223C", "#C1B387", "#FFD5C0"])
 
     // Compute the position of each group on the pie:
     let pie = d3.pie()
