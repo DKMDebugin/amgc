@@ -290,8 +290,6 @@ def set_shape_create_cnn_model(name, ncols):
         taking as parameters things you want to verify
         using cross validation and model selection
         """
-        # name = 'cnn'
-        # ncols = 217
 
         # initialize a random seed for replication purposes
         numpy.random.seed(23456)
@@ -528,18 +526,6 @@ def normalization_pipeline(predictors_all):
         #         PCA(n_components=n_components),
         Reshape1DTo2D()
     )
-
-
-def remote_imports():
-    import ast
-    from pandas.api.types import CategoricalDtype
-    import ipyparallel
-    import librosa
-    import numpy as numpy
-    import os
-    import pandas as pandas
-    import pywt
-    from scipy.stats import skew
 
 
 def load(filepath):
