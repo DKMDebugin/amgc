@@ -6,3 +6,5 @@ venv
 file
 commands.txt
 instance
+my_logs
+.coverage
