@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div id="my_dataviz"></div>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script>
+        // Create dummy data
+        let data = {
+            prediction: {
+                hiphop: 0.9906912446022034,
+                rock: 1.4874367479933426e-05,
+                pop: 0.009293857030570507
+            },
+            analysis: [
+                {beats: 3, timestamps: 0.034829931972789115},
+                {beats: 63, timestamps: 0.7314285714285714},
+                {beats: 108, timestamps: 1.253877551020408},
+                {beats: 161, timestamps: 1.8692063492063493},
+                {beats: 215, timestamps: 2.4961451247165534},
+                {beats: 269, timestamps: 3.1230839002267574},
+                {beats: 313, timestamps: 3.633922902494331},
+                {beats: 975, timestamps: 11.319727891156463},
+                {beats: 356, timestamps: 4.133151927437642},
+                {beats: 406, timestamps: 4.713650793650793},
+                {beats: 456, timestamps: 5.294149659863946},
+                {beats: 507, timestamps: 5.88625850340136},
+                {beats: 556, timestamps: 6.455147392290249},
+                {beats: 604, timestamps: 7.012426303854875},
+                {beats: 657, timestamps: 7.627755102040816},
+                {beats: 708, timestamps: 8.219863945578231},
+                {beats: 764, timestamps: 8.870022675736962},
+                {beats: 814, timestamps: 9.450521541950113},
+                {beats: 867, timestamps: 10.065850340136054},
+                {beats: 921, timestamps: 10.692789115646258},
+                {beats: 975, timestamps: 11.319727891156463},
+                {beats: 1027, timestamps: 11.92344671201814}
+                ]
+        }
+
+        function plotPieChart(data){
+            // set the dimensions and margins of the graph
+            let width = 450
+                height = 450
+                margin = 40
+
+            // The radius of the pieplot is half the width or half the height (smallest one). I subtract a bit of margin.
+            let radius = Math.min(width, height) / 2 - margin
+
+            // append the svg object to the div called 'my_dataviz'
+            let svg = d3.select("#my_dataviz")
+              .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+              .append("g")
+                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+
+            // set the color scale
+            let color = d3.scaleOrdinal()
+              .domain(data)
+              .range(["#98abc5", "#8a89a6", "#7b6888"])
+
+            // Compute the position of each group on the pie:
+            let pie = d3.pie()
+              .value(function(d) {return d.value; })
+            let data_ready = pie(d3.entries(data))
+
+            // shape helper to build arcs:
+            let arcGenerator = d3.arc()
+              .innerRadius(0)
+              .outerRadius(radius)
+
+            // Build the pie chart: Basically, each part of the pie is a path that we build using the arc function.
+            svg
+              .selectAll('slices')
+              .data(data_ready)
+              .enter()
+              .append('path')
+              .attr('d', d3.arc()
+                .innerRadius(0)
+                .outerRadius(radius)
+              )
+              .attr('fill', function(d){ return(color(d.data.key)) })
+              .attr("stroke", "black")
+              .style("stroke-width", "2px")
+              .style("opacity", 0.7)
+
+            svg
+              .selectAll('slices')
+              .data(data_ready)
+              .enter()
+              .append('text')
+              .text(function(d){ return d.data.key})
+              .attr("transform", function(d) { return "translate(" + arcGenerator.centroid(d) + ")";  })
+              .style("text-anchor", "middle")
+              .style("font-size", 17)
+        }
+
+        plotPieChart(data.prediction)
+
+
+    </script>
+
+</body>
+</html>

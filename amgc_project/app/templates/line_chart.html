@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div id="my_dataviz"></div>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script>
+
+        let data = {
+            prediction: {
+                hiphop: 0.9906912446022034,
+                rock: 1.4874367479933426e-05,
+                pop: 0.009293857030570507
+            },
+            analysis: {
+                beats: [3, 63, 108, 161, 215, 269, 313, 356, 406,
+                    456, 507, 556, 604, 657, 708, 764, 814, 867, 921, 975, 1027],
+                time_stamps: [0.034829931972789115, 0.7314285714285714, 1.253877551020408,
+                    1.8692063492063493, 2.4961451247165534, 3.1230839002267574,
+                    3.633922902494331, 4.133151927437642, 4.713650793650793,
+                    5.294149659863946, 5.88625850340136, 6.455147392290249, 7.012426303854875,
+                    7.627755102040816, 8.219863945578231, 8.870022675736962, 9.450521541950113,
+                    10.065850340136054, 10.692789115646258, 11.319727891156463, 11.92344671201814]
+            }
+        }
+
+        // set the dimensions and margins of the graph
+        var margin = {top: 10, right: 30, bottom: 30, left: 60},
+            width = 460 - margin.left - margin.right,
+            height = 400 - margin.top - margin.bottom;
+
+        // append the svg object to the body of the page
+        var svg = d3.select("#my_dataviz")
+          .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+            .attr("transform",
+                  "translate(" + margin.left + "," + margin.top + ")");
+
+        //Read the data
+        d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/3_TwoNumOrdered_comma.csv",
+
+          // When reading the csv, I must format variables:
+          function(d){
+            return { date : d3.timeParse("%Y-%m-%d")(d.date), value : d.value }
+          },
+
+          // Now I can use this dataset:
+          function(data) {
+
+            // Add X axis --> it is a date format
+            var x = d3.scaleTime()
+              .domain(d3.extent(data, function(d) { return d.date; }))
+              .range([ 0, width ]);
+            svg.append("g")
+              .attr("transform", "translate(0," + height + ")")
+              .call(d3.axisBottom(x));
+
+
+            // Add Y axis
+            var y = d3.scaleLinear()
+              .domain([0, d3.max(data, function(d) { return +d.value; })])
+              .range([ height, 0 ]);
+            svg.append("g")
+              .call(d3.axisLeft(y));
+
+            // Add the line
+            svg.append("path")
+              .datum(data)
+              .attr("fill", "none")
+              .attr("stroke", "steelblue")
+              .attr("stroke-width", 1.5)
+              .attr("d", d3.line()
+                .x(function(d) { return x(d.date) })
+                .y(function(d) { return y(d.value) })
+                )
+
+        })
+
+    </script>
+
+</body>
+</html>

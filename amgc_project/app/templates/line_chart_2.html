@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div id="my_dataviz"></div>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script>
+
+        let data = {
+            prediction: {
+                hiphop: 0.9906912446022034,
+                rock: 1.4874367479933426e-05,
+                pop: 0.009293857030570507
+            },
+            analysis: [
+                 {beats: 764, timestamps: 8.870022675736962},
+                {beats: 814, timestamps: 9.450521541950113},
+                {beats: 867, timestamps: 10.065850340136054},
+                {beats: 921, timestamps: 10.692789115646258},
+                {beats: 975, timestamps: 11.319727891156463},
+                {beats: 161, timestamps: 1.8692063492063493},
+                {beats: 215, timestamps: 2.4961451247165534},
+                {beats: 269, timestamps: 3.1230839002267574},
+                {beats: 313, timestamps: 3.633922902494331},
+                {beats: 356, timestamps: 4.133151927437642},
+                {beats: 406, timestamps: 4.713650793650793},
+                {beats: 456, timestamps: 5.294149659863946},
+                {beats: 3, timestamps: 0.034829931972789115},
+                {beats: 63, timestamps: 0.7314285714285714},
+                {beats: 108, timestamps: 1.253877551020408},
+                {beats: 161, timestamps: 1.8692063492063493},
+                {beats: 215, timestamps: 2.4961451247165534},
+                {beats: 269, timestamps: 3.1230839002267574},
+                {beats: 313, timestamps: 3.633922902494331},
+                {beats: 356, timestamps: 4.133151927437642},
+                {beats: 406, timestamps: 4.713650793650793},
+                {beats: 456, timestamps: 5.294149659863946},
+                {beats: 507, timestamps: 5.88625850340136},
+                {beats: 556, timestamps: 6.455147392290249},
+                {beats: 604, timestamps: 7.012426303854875},
+                {beats: 657, timestamps: 7.627755102040816},
+                {beats: 708, timestamps: 8.219863945578231},
+                {beats: 764, timestamps: 8.870022675736962},
+                {beats: 814, timestamps: 9.450521541950113},
+                {beats: 867, timestamps: 10.065850340136054},
+                {beats: 921, timestamps: 10.692789115646258},
+                {beats: 975, timestamps: 11.319727891156463},
+                 {beats: 313, timestamps: 3.633922902494331},
+                {beats: 356, timestamps: 4.133151927437642},
+                {beats: 406, timestamps: 4.713650793650793},
+                {beats: 456, timestamps: 5.294149659863946},
+                {beats: 507, timestamps: 5.88625850340136},
+                {beats: 556, timestamps: 6.455147392290249},
+                ]
+        }
+
+        function plotLineGraph(data) {
+
+            // set the dimensions and margins of the graph
+            let margin = {top: 10, right: 30, bottom: 30, left: 60},
+                width = 460 - margin.left - margin.right,
+                height = 400 - margin.top - margin.bottom;
+
+            // append the svg object to the body of the page
+            let svg = d3.select("#my_dataviz")
+              .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+              .append("g")
+                .attr("transform",
+                      "translate(" + margin.left + "," + margin.top + ")");
+
+            // Add X axis
+            let x = d3.scaleLinear()
+              .domain([0, d3.max(data, function(d) { return +d.timestamps; })])
+              .range([ 0, width ]);
+            svg.append("g")
+              .attr("transform", "translate(0," + height + ")")
+              .call(d3.axisBottom(x));
+
+            // Add Y axis
+            let y = d3.scaleLinear()
+              .domain([0, d3.max(data, function(d) { return +d.beats; })])
+              .range([ height, 0 ]);
+            svg.append("g")
+              .call(d3.axisLeft(y));
+
+            // Add the line
+            svg.append("path")
+              .datum(data)
+              .attr("fill", "none")
+              .attr("stroke", "steelblue")
+              .attr("stroke-width", 1.5)
+              .attr("d", d3.line()
+                .x(function(d) {console.log(d.timestamps);return x(d.timestamps) })
+                .y(function(d) {console.log(d.beats);return y(d.beats) })
+                )
+
+        }
+
+        d3.csv(
+            'https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/3_TwoNumOrdered_comma.csv',
+            function(d){
+                return {beats: d.value, timestamps: (d.value* (Math.random()))}
+            },
+            function (data) {
+                plotLineGraph(data)
+            }
+        )
+
+        //plotLineGraph(data.analysis)
+
+    </script>
+
+</body>
+</html>
