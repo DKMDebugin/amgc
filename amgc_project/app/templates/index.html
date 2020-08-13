@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>AMGC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="static/index.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
   </head>
   <body>
 
@@ -32,7 +32,7 @@
     <script src="https://cdn.rawgit.com/mattdiamond/Recorderjs/08e7abd9/dist/recorder.js"></script>
     <script src="https://d3js.org/d3.v4.js"></script>
     <script src="https://kit.fontawesome.com/5cc2e912bd.js"></script>
-    <script src="{{ url_for('static', filename='js/app_v3.js') }}"></script>
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
 
   </body>
 </html>
