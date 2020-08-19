@@ -27,7 +27,8 @@ import tensorflow as tf
 from pandas.api.types import CategoricalDtype
 
 # constants
-SYS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+BASE_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+SYS_DIR_PATH = os.path.dirname(BASE_DIR_PATH)
 MOUNTED_DATASET_PATH = SYS_DIR_PATH + '/s3-bucket'
 SAMPLE_HIPHOP_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/hiphop.00000.wav'
 SAMPLE_POP_FILE_PATH = MOUNTED_DATASET_PATH + '/gtzan/wavfiles/pop.00000.wav'
@@ -46,7 +47,7 @@ root_logdir = os.path.join(os.curdir, "my_logs")
 def visualize_conf_metrics(X_test, y_test, model):
     '''
     visualize_conf_metrics() plot the confusion metrics
-    taking as parameter the test data.
+    taking as parameter the test data and model instance.
     '''
     # make prediction on test data
     predicted_y_test = model.predict_proba(X_test)
@@ -68,7 +69,7 @@ def visualize_conf_metrics(X_test, y_test, model):
 def evaluate_model(X_test, y_test, model):
     """
     evaluate_model() returns evaluation metrics to 
-    measure the performace of the model. Taking as 
+    measure the performance of the model. Taking as
     parameter test data and model instance.
     """
     mean_fpr = numpy.linspace(start=0, stop=1, num=100)
@@ -202,7 +203,7 @@ def train_model(X, y, model_name, ncols, build_fn, preprocess_pipeline,
     """
     train_model() trains a model using cv and return
     the best model score, params, & instance. Takes as
-    parameter model name (str), batch_size (int), epochs (int).
+    parameter things you need to train a model.
     """
     # create early stopping callback instance
     early_stopping_cb = callbacks.EarlyStopping(
@@ -234,8 +235,8 @@ def train_model(X, y, model_name, ncols, build_fn, preprocess_pipeline,
 def visualize_wavelet(signal, waveletname, level_of_dec):
     """
     visualize_wavelet() create original visualization for a signal and 
-    create visulization of the signal for a specified wavelet type for 
-    the range of decompsition level specified taking as parameter the
+    create visualization of the signal for a specified wavelet type for
+    the range of decomposition level specified taking as parameter the
     signal, wavelet name and max level of decomposition. 
     
     It was adapted from Ahmet Taspinar's blog titled:
@@ -1160,7 +1161,7 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
 
     # compute rhythmic features
     # compute tempo, beats & beats' time stamp
-    tempo, beats,beats_timestamp = extract_beats_time(time_series, sample_rate)
+    tempo, beats, beats_timestamp = extract_beats_time(time_series, sample_rate)
     stats_beats = stats(beats)
     stats_beats_timestamp = stats(beats_timestamp)
 
@@ -1632,6 +1633,42 @@ def map_beats_to_timestamp(file):
     return output
 
 
+def get_model_pipeline():
+    """
+    get_model_pipeline() returns the preprocessing pipeline and model
+    """
+    import requests
+
+    pipeline_estimator_path = BASE_DIR_PATH + '/amgc_project/app/file/pipeline_estimator.pkl'
+    model_path = BASE_DIR_PATH + '/amgc_project/app/file/cnn_model.h5'
+
+    # check if pipeline and model has already been downloaded
+    if not (os.path.isfile(pipeline_estimator_path) and os.path.isfile(model_path)):
+        pipeline_estimator_url = "https://storage.googleapis.com/music-dataset-bucket/model/pipeline_estimator_3.pkl"
+        model_url = "https://storage.googleapis.com/music-dataset-bucket/model/cnn_model_3.h5"
+
+        # get pipeline and model from bucket & store them
+        try:
+            pipeline_resp = requests.get(pipeline_estimator_url)
+            model_resp = requests.get(model_url)
+
+            with open(pipeline_estimator_path, 'wb') as p_file, open(model_path, 'wb') as m_file:
+                p_file.write(pipeline_resp.content)
+                m_file.write(model_resp.content)
+
+        except requests.HTTPError as err:
+            print(f'Operation failed (HTTP Error): {err.strerror}')
+
+        except IOError as err:
+            print(f'Operation failed (IOError): {err.strerror}')
+
+    # load preprocessing pipeline and model instance
+    pipeline_estimator = joblib.load(pipeline_estimator_path)
+    model = load_model(model_path)
+
+    return pipeline_estimator, model
+
+
 def extract_features_make_prediction(filepath):
     """
     This function takes path to a .wav audio file as input.
@@ -1660,12 +1697,8 @@ def extract_features_make_prediction(filepath):
         numpy.append(wavelet_predictors_labels, 'genre_label'))]
     X = timbral_rhythmic_predictors
 
-    pipeline_estimator_path = MOUNTED_DATASET_PATH + '/model/pipeline_estimator_3.pkl'
-    model_path = MOUNTED_DATASET_PATH + '/model/cnn_model_3.h5'
-
     # load preprocessing pipeline and model instance
-    pipeline_estimator = joblib.load(pipeline_estimator_path)
-    model = load_model(model_path)
+    pipeline_estimator, model = get_model_pipeline()
 
     # transform data & make predictions
     X = pipeline_estimator.transform(X)
