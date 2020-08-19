@@ -31,9 +31,14 @@ class TestPrediction(unittest.TestCase):
         assert len(data) == 2
 
     def test_prediction_file_ext(self):
-        mp3_filepath = os.path.join(self.app.config['UPLOAD_FOLDER'], 'audio.txt')
+        text_filepath = os.path.join(self.app.config['UPLOAD_FOLDER'], 'audio.txt')
+
+        if not os.path.isfile(text_filepath):
+            with open(text_filepath, 'w') as file:
+                file.write = 'Text file'
+
         response = self.client.post('/audio', data={
-            'audio_data': open(mp3_filepath, 'r')
+            'audio_data': open(text_filepath, 'r')
         })
         assert response.status_code == 400
 
