@@ -3,8 +3,12 @@
 __pycache__
 venv
 .ipynb_checkpoints
-file
 commands.txt
 instance
 my_logs
 .coverage
+/amgc_project/instance/
+*.h5
+*.pkl
+audio.txt
+/amgc_project/app/file/Users_macbookretina_Desktop_automatic-music-genre-classification_amgc_project_app_file_audio.wav
