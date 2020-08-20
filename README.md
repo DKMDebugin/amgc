@@ -9,7 +9,7 @@ A system was created around the final model from the experiment. The core operat
 * Present result to user in a pie chart.
 
 
-![](header.png)
+![Project walk through](assets/app.gif)
 
 ## Development & Installation Setup
 
