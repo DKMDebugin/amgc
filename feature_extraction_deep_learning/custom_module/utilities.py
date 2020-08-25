@@ -19,6 +19,7 @@ import numpy
 import pandas
 from sklearn.pipeline import make_pipeline, FeatureUnion, Pipeline
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
+import pydub
 import matplotlib.pyplot as pyplot
 import pywt
 import seaborn
@@ -1617,14 +1618,15 @@ def extract_audio_features(dataframe, file, genre_label, data_source):
     return dataframe
 
 
-def map_beats_to_timestamp(file):
+def map_beats_to_timestamp(filepath):
     """
     map_beats_to_timestamp() maps
-    beats (numpy.Array) to timestamps (numpy.Array)
+    beats (numpy.Array) to timestamps (numpy.Array) taking
+    as parameter the filepath (str) of a .wav audio file
     """
     output = []
 
-    sample_rate, time_series = get_time_series_sample_rate(file)
+    sample_rate, time_series = get_time_series_sample_rate(filepath)
     _, beats, beats_timestamps = extract_beats_time(time_series, sample_rate)
 
     for x, y in zip(beats, beats_timestamps):
@@ -1669,15 +1671,41 @@ def get_model_pipeline():
     return pipeline_estimator, model
 
 
+def is_silent(filepath, silence_threshold=-30):
+    """
+    is_silent() returns True if the audio file is filled with
+    more than 30% of silence and False if otherwise taking
+    as parameter the filepath (str) of a .wav audio file &
+    the silence threshold (int).
+    """
+    audio_segment = pydub.AudioSegment.from_wav(filepath)
+    no_of_chunk, audio_len = 3, len(audio_segment)
+    silence, chunk_len = 0, audio_len/no_of_chunk
+
+    for i in range(no_of_chunk):
+        start_at, end_at = i * chunk_len, (i+1) * chunk_len
+        chunk = audio_segment[start_at:end_at]
+        silence = silence + pydub.silence.detect_leading_silence(
+            chunk, silence_threshold=silence_threshold)
+
+    silence_percentage = silence / len(audio_segment) * 100
+    if silence_percentage >= 30:
+        return True
+    return False
+
+
 def extract_features_make_prediction(filepath):
     """
-    This function takes path to a .wav audio file as input.
-    It extract features from the audio file, scales these
-    features & make prediction with them.
+    extract_features_make_prediction() takes the path to a .wav audio
+    file as input. It extract features from the audio file,
+    scales these features & make prediction with them.
 
     Parameter:
     filepath (str): path to a .wav audio file
     """
+
+    if is_silent(filepath):
+        return {}
 
     # extract features
     features = extract_audio_features(dataframe, filepath, '', '')
