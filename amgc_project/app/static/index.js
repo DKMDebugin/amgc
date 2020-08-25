@@ -17,6 +17,7 @@ let stopButton = document.getElementById('stopButton')
 let resetButton = document.getElementById('resetButton')
 let sendButton = document.getElementById('sendButton')
 let spinner = document.getElementById('spinner')
+let resultText = document.getElementById('resultText')
 
 // Main
 window.onload = function()  {
@@ -31,8 +32,6 @@ window.onload = function()  {
 
 // Utilities
 function startRecording() {
-    console.log('recordButton clicked')
-
     let constraints = {
         audio: true,
         video: false
@@ -44,10 +43,11 @@ function startRecording() {
     resetButton.disabled = false
     sendButton.disabled = true
 
+    // reset text
+    resultText.textContent = 'Result:'
+
 
     navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
-        console.log('getUserMedia() success, stream created, initializing Recorder.js ...')
-
         audioContext = new AudioContext()
 
         let numChannels = 2
@@ -84,11 +84,7 @@ function startRecording() {
         //     }
         // }
 
-        console.log('Recording started')
-
     }).catch(function(err) {
-        console.log('Error thrown when instantiating getUserMedia: ' + err)
-
         //enable & disable buttons if getUserMedia() fails
         recordButton.disabled = true
         stopButton.disabled = false
@@ -98,8 +94,6 @@ function startRecording() {
 }
 
 function stopRecording(){
-    console.log('pauseButton clicked rec.recording=', rec.recording )
-
     if (rec.recording){
         //pause
         rec.stop()
@@ -123,12 +117,12 @@ function stopRecording(){
 }
 
 function sendAudioDataAndPresentResult(blob) {
-    console.log('Sending data to server side')
-
     // remove chart if one is present
     removeChart()
     // display spinner
     spinner.style.display = 'block'
+    // reset text
+    resultText.textContent = 'Result:'
 
     let filename = 'audio.wav'
     let formData = new FormData()
@@ -140,10 +134,14 @@ function sendAudioDataAndPresentResult(blob) {
         body: formData
     }).then(res => res.json())
     .then(data => {
-        console.log('Present results')
         spinner.style.display = 'none'
-        plotPieChart(data.prediction)
-        // plotLineGraph(data.analysis)
+        if (Object.keys(data).length == 0){
+            let message = "Result: The captured audio is filled with more than 30% of silence. Do re-capture!!"
+            resultText.textContent = message
+        } else {
+            plotPieChart(data.prediction)
+            // plotLineGraph(data.analysis)
+        }
     }).catch(err => {
         console.log(err)
     })
@@ -165,6 +163,9 @@ function resetRecording(){
 
     // remove charts
     removeChart()
+
+    // reset text
+    resultText.textContent = 'Result:'
 }
 
 function sendRecording(){
@@ -276,7 +277,6 @@ function plotPieChart(data){
                 midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
 
             pos[0] = radius * 0.99 * (midangle < Math.PI ? 1 : -1)
-            // console.log(pos)
             return 'translate(' + pos + ')'
         })
         .style("fill", "white")
@@ -286,7 +286,6 @@ function plotPieChart(data){
             midangle = ((d.startAngle + (d.endAngle - d.startAngle)) * d.index) / 2
             if(d.index==0)
                 midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
-            // console.log(midangle)
             return (midangle < Math.PI ? 'start' : 'end')
         })
 }
