@@ -3,9 +3,11 @@
 
 A system was created around the final model from the experiment. The core operation carried out by the system is as follows;
 * Live capturing of music audio (max 30s).
-* Extract music features from music audio.
-* Scale music features.
-* Correctly classify captured music audio by genre 
+* Automatically stop recording after 30s
+* Detect silence
+* Extract music features from audio signal.
+* Compute stats repsentation & scale features.
+* Correctly classify captured music audio by genre
 * Present result to user in a pie chart.
 
 
