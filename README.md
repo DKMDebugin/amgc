@@ -1,5 +1,5 @@
 # AMGC: Automatic Music Genre Classification
-> This is repository was created by **Jamiu Olashile Salimon** for his thesis titled: **"Comparison of Different Music Features for Automatic Music Genre Classification using Deep Learning"** submitted to the University of Limerick, August 2020 as a partial fulfillment of the requirements for the degree of Master of Science in Software Engineering.
+> This is repository was created by **Jamiu Olashile Salimon** for his thesis titled: **"The Comparison of Different Music Features for Automatic Music Genre Classification using Deep Learning"** submitted to the University of Limerick, August 2020 as a partial fulfillment of the requirements for the degree of Master of Science in Software Engineering.
 
 A system was created around the final model from the experiment. The core operation carried out by the system is as follows;
 * Live capturing of music audio (max 30s).
