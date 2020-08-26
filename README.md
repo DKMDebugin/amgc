@@ -5,7 +5,9 @@ A system was created around the final model from the experiment. The core operat
 * Live capturing of music audio (max 30s).
 * Extract music features from music audio.
 * Scale music features.
-* Correctly classify captured music audio by genre 
+* Correctly classify captured music audio by genre
+* Automatially stop recording after 30s
+* Detect silence
 * Present result to user in a pie chart.
 
 
